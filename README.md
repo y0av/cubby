@@ -78,12 +78,13 @@ The extension reads your app folders, favourites and app usage from GNOME's sett
 ```sh
 tools/build.sh                 # pack dist/cubby@y0av.github.io.shell-extension.zip
 gjs -m tests/test-layout.js    # unit tests for packing, reflow, overflow counts, navigation
+npx eslint                     # code style
 tools/lint.sh                  # shexli, the extensions.gnome.org review linter
 tools/nest.sh start 1920x1200 --dtp   # isolated headless GNOME Shell with the extension
 tools/walkthrough.sh           # scripted walkthrough against it
 ```
 
-`tools/nest.sh` runs a separate headless GNOME Shell with its own settings database, so testing never touches your session. `DECISIONS.md` records how the extension hooks into the shell and why things are done the way they are.
+`tools/nest.sh` runs a separate headless GNOME Shell with its own settings database, so testing never touches your session. The other `tools/test-*.sh` scripts run against it. `DECISIONS.md` describes how Cubby hooks into the shell, which private shell API it depends on, and why things are done the way they are.
 
 ## License
 

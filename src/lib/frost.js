@@ -25,7 +25,7 @@ uniform float alphas[${MAX_RECTS}];
 uniform float count;
 uniform vec2 size;
 uniform float radius;
-float hs_rrect(vec2 p, vec4 r, float rad) {
+float rounded_rect(vec2 p, vec4 r, float rad) {
     vec2 h = r.zw * 0.5;
     vec2 q = abs(p - (r.xy + h)) - h + rad;
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rad;
@@ -38,7 +38,7 @@ float a = 0.0;
 for (int i = 0; i < ${MAX_RECTS}; i++) {
     if (float(i) >= count)
         break;
-    float d = hs_rrect(p, rects[i], radius);
+    float d = rounded_rect(p, rects[i], radius);
     a = max(a, clamp(0.5 - d, 0.0, 1.0) * alphas[i]);
 }
 cogl_color_out *= a;
@@ -83,14 +83,14 @@ class FrostMask extends Shell.GLSLEffect {
 /** Separable box blur on an RGB(A) sample, repeated to approach a Gaussian. */
 function blurSample(sample) {
     const {width: w, height: h, n, stride, data} = sample;
-    let src = new Float32Array(w * h * 3);
+    const src = new Float32Array(w * h * 3);
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
             for (let c = 0; c < 3; c++)
                 src[(y * w + x) * 3 + c] = data[y * stride + x * n + c];
         }
     }
-    let dst = new Float32Array(src.length);
+    const dst = new Float32Array(src.length);
     const pass = (horizontal, from, to) => {
         const len = horizontal ? w : h, lines = horizontal ? h : w;
         for (let l = 0; l < lines; l++) {
@@ -129,7 +129,7 @@ class Frost extends St.Widget {
         this.set_content_gravity(Clutter.ContentGravity.RESIZE_FILL);
         this.set_content_scaling_filters(Clutter.ScalingFilter.LINEAR, Clutter.ScalingFilter.LINEAR);
         this._mask = new FrostMask();
-        this.add_effect_with_name('hs-frost-mask', this._mask);
+        this.add_effect_with_name('frost-mask', this._mask);
         this._key = '';
     }
 
@@ -137,7 +137,6 @@ class Frost extends St.Widget {
     setSample(sample) {
         if (!sample) {
             this.set_content(null);
-            this._hasImage = false;
             return;
         }
         const bytes = blurSample(sample);
@@ -146,11 +145,6 @@ class Frost extends St.Widget {
         content.set_bytes(ctx, new GLib.Bytes(bytes), Cogl.PixelFormat.RGB_888,
             sample.width, sample.height, sample.width * 3);
         this.set_content(content);
-        this._hasImage = true;
-    }
-
-    get hasImage() {
-        return !!this._hasImage;
     }
 
     /**

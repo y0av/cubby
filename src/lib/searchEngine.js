@@ -14,7 +14,7 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import * as ParentalControlsManager from 'resource:///org/gnome/shell/misc/parentalControlsManager.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
-export const MAX_APPS = 10;
+const MAX_APPS = 10;
 const PER_PROVIDER = 3;
 const MAX_OTHER = 8;
 const PROVIDER_DELAY_MS = 150;
@@ -22,7 +22,7 @@ const SOFTWARE_IDS = ['org.gnome.Software.desktop'];
 const APP_CENTER_IDS = ['snap-store_snap-store.desktop', 'io.elementary.appcenter.desktop'];
 
 /** Same splitting as ui/searchController.js getTermsForSearchString. */
-export function termsFor(text) {
+function termsFor(text) {
     const s = text.trim();
     return s ? s.split(/\s+/) : [];
 }
@@ -52,10 +52,6 @@ export class SearchEngine extends Signals.EventEmitter {
 
     destroy() {
         this.reset();
-    }
-
-    get terms() {
-        return this._terms;
     }
 
     reset() {

@@ -21,45 +21,55 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 
 import {Board} from './board.js';
 import {Coach, ContextMenu, EditBar} from './chrome.js';
-import {Clock} from './clock.js';
-import {WallpaperWatcher} from './wallpaper.js';
-import {contrast, luminance} from './theme.js';
+import {Clock, ClockHalo} from './clock.js';
 import {EditMode} from './editMode.js';
 import {FolderView} from './folderView.js';
-import {computeGrid, pickNeighbor} from './layoutEngine.js';
+import {PILL_H, computeGrid, pickNeighbor} from './layoutEngine.js';
 import {ResultsPanel, appCaption} from './results.js';
+import {Scrim, scrimAlpha} from './scrim.js';
 import {SearchEngine} from './searchEngine.js';
 import {SearchPill} from './searchPill.js';
 import {Tooltip} from './tooltip.js';
+import {WallpaperWatcher} from './wallpaper.js';
 import {WindowDimmer} from './windowDimmer.js';
 
 const SCRIM_FADE_MS = 400;
 const WINDOW_DIM_MS = 350;
 const CLOSE_MS = 260;
-// Opening, tiles rise in a wave from the top-left corner; the wave takes
-// the same time whatever the grid size.
+// Opening, the tiles rise in a wave from the top-left corner. The wave
+// takes the same time whatever the size of the grid.
 const OPEN_SPREAD_MS = 220;
 const OPEN_TILE_MS = 480;
 const OPEN_FADE_MS = 320;
 const CLOSE_SPREAD_MS = 110;
 const CLOSE_TILE_MS = 220;
 const CLOSE_FADE_MS = 180;
-// launching zooms the whole layer towards the icon
+// launching an app zooms the whole layer towards its icon
 const LAUNCH_MS = 280;
 const LAUNCH_ZOOM = 1.06;
-const FOLDER_CROSSFADE_MS = 160;
+
 const SEARCH_FADE_MS = 220;
-const RESULTS_FADE_MS = 140;
 const SEARCH_BOARD_OPACITY = 36; // about 14%
 const SEARCH_BLUR_RADIUS = 16;
+const RESULTS_FADE_MS = 140;
 const RESULTS_GAP = 12;
-const FOLDER_BLUR_RADIUS = 24;
+
 const FOLDER_FADE_MS = 300;
+const FOLDER_BLUR_RADIUS = 24;
+const FOLDER_CROSSFADE_MS = 160;
+
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 8;
 const COACH_BOTTOM = 72;
 
-export const Mode = {BOARD: 'board', SEARCH: 'search', FOLDER: 'folder', EDIT: 'edit'};
+const Mode = {BOARD: 'board', SEARCH: 'search', FOLDER: 'folder', EDIT: 'edit'};
+
+const ARROWS = {
+    [Clutter.KEY_Left]: [-1, 0],
+    [Clutter.KEY_Right]: [1, 0],
+    [Clutter.KEY_Up]: [0, -1],
+    [Clutter.KEY_Down]: [0, 1],
+};
 
 /** Scales the pixel fields of grid metrics by the St scale factor. */
 function scaleGrid(g, sf) {
@@ -71,6 +81,26 @@ function scaleGrid(g, sf) {
     for (const k of px)
         out[k] = Math.round(g[k] * sf);
     return out;
+}
+
+/** Eases a blur on an actor, adding the effect first and dropping it at 0. */
+function easeBlur(actor, name, radius, duration) {
+    if (!actor.get_effect(name)) {
+        if (radius === 0)
+            return;
+        actor.add_effect_with_name(name, new Shell.BlurEffect({
+            mode: Shell.BlurMode.ACTOR,
+            radius: 0,
+            brightness: 1,
+        }));
+    }
+    actor.ease_property(`@effects.${name}.radius`, radius, {
+        duration,
+        onComplete: () => {
+            if (radius === 0)
+                actor.remove_effect_by_name(name);
+        },
+    });
 }
 
 function extents(actor) {
@@ -98,7 +128,7 @@ export const Layer = GObject.registerClass({
     _init({settings, model, theme, extension}) {
         super._init({
             name: 'cubbyLayer',
-            style_class: 'hs-layer',
+            style_class: 'cubby-layer',
             reactive: true,
             can_focus: true,
             visible: false,
@@ -117,9 +147,7 @@ export const Layer = GObject.registerClass({
         this._kb = false;
         this._engine = new SearchEngine();
 
-        this._scrim = new St.Widget({opacity: 0, layout_manager: new Clutter.FixedLayout()});
-        this._scrimParts = [new St.Widget(), new St.Widget(), new St.Widget()];
-        this._scrimParts.forEach(p => this._scrim.add_child(p));
+        this._scrim = new Scrim();
         this.add_child(this._scrim);
 
         // board and header, so one blur covers both behind a folder
@@ -137,15 +165,13 @@ export const Layer = GObject.registerClass({
         this.pill = new SearchPill();
         this._content.add_child(this.pill);
 
-        // soft halo behind the clock, as strong as this wallpaper needs for
-        // the clock to reach 5:1 (often fully transparent)
-        this._clockHalo = new St.Widget({reactive: false, visible: false});
+        this._clockHalo = new ClockHalo();
         this._content.add_child(this._clockHalo);
         this.clock = new Clock();
         this._content.add_child(this.clock);
 
         // dims and catches clicks behind an open folder; a click closes it
-        this._shield = new St.Widget({style_class: 'hs-shield', reactive: true, visible: false});
+        this._shield = new St.Widget({style_class: 'cubby-shield', reactive: true, visible: false});
         this.add_child(this._shield);
 
         this.results = new ResultsPanel(this);
@@ -171,7 +197,7 @@ export const Layer = GObject.registerClass({
             reset: () => this._resetLayout(),
             prefs: () => {
                 this.close();
-                this._extension?.openPreferences();
+                this._extension.openPreferences();
             },
         }, settings);
 
@@ -183,8 +209,8 @@ export const Layer = GObject.registerClass({
             const m = this.monitor;
             return m ? m.width / m.height : 16 / 10;
         });
-        this._wallpaper.connectObject('changed', (_w, lum) => {
-            this._applyScrim(lum);
+        this._wallpaper.connectObject('changed', () => {
+            this._syncWallpaper();
             this.board.setFrostSample(this._wallpaper.sample);
         }, this);
 
@@ -248,10 +274,6 @@ export const Layer = GObject.registerClass({
         return this._model.focusApp;
     }
 
-    get names() {
-        return this._settings.get_boolean('show-app-names');
-    }
-
     isNew(appId) {
         return this._model.isNew(appId);
     }
@@ -261,7 +283,7 @@ export const Layer = GObject.registerClass({
             return;
         // Close first: activating a running app moves the focus, which
         // would close the layer without the launch animation.
-        const icon = actor ? this._findIcon(actor) : null;
+        const icon = actor?.appIcon?.icon ?? null;
         if (icon) {
             // the icon swells and fades while the layer zooms towards it
             this._launchIcon = icon;
@@ -285,18 +307,7 @@ export const Layer = GObject.registerClass({
             app.activate();
     }
 
-    _findIcon(actor) {
-        if (actor instanceof St.Icon)
-            return actor;
-        for (const child of actor.get_children()) {
-            const found = this._findIcon(child);
-            if (found)
-                return found;
-        }
-        return null;
-    }
-
-    openFolder(id, actor) {
+    openFolder(id) {
         if (this.mode !== Mode.BOARD || this.folderView.isOpen)
             return;
         const folder = this._model.folder(id);
@@ -315,12 +326,7 @@ export const Layer = GObject.registerClass({
         this._shield.show();
         this._shield.opacity = 0;
         this._shield.ease({opacity: 255, duration: FOLDER_FADE_MS});
-        if (!this._content.get_effect('hs-fblur')) {
-            this._content.add_effect_with_name('hs-fblur', new Shell.BlurEffect({
-                mode: Shell.BlurMode.ACTOR, radius: 0, brightness: 1,
-            }));
-        }
-        this._content.ease_property('@effects.hs-fblur.radius', FOLDER_BLUR_RADIUS, {duration: FOLDER_FADE_MS});
+        easeBlur(this._content, 'folder-blur', FOLDER_BLUR_RADIUS, FOLDER_FADE_MS);
 
         // the tile fades out under the panel that grows from it
         const from = this._tileRect(tile);
@@ -329,7 +335,7 @@ export const Layer = GObject.registerClass({
         this.folderView.open(folder, from, {
             width: this.width,
             height: this.height,
-            top: this.grid.workArea.y * (this.grid.sf ?? 1) + 24,
+            top: this.grid.workArea.y * this.grid.sf + 24,
         }, {focusApp: this._model.focusApp, customOrder: this._model.hasCustomOrder(id)});
         const first = this.folderView.items[0];
         if (first) {
@@ -363,15 +369,7 @@ export const Layer = GObject.registerClass({
             if (this.mode !== Mode.FOLDER)
                 this._shield.hide();
         }});
-        if (this._content.get_effect('hs-fblur')) {
-            this._content.ease_property('@effects.hs-fblur.radius', 0, {
-                duration,
-                onStopped: () => {
-                    if (this.mode !== Mode.FOLDER)
-                        this._content.remove_effect_by_name('hs-fblur');
-                },
-            });
-        }
+        easeBlur(this._content, 'folder-blur', 0, duration);
         const openerTile = this._folderOpener;
         this._folderOpener = null;
         const opener = openerTile?.get_stage()
@@ -445,14 +443,7 @@ export const Layer = GObject.registerClass({
 
         this.set_position(m.x, m.y);
         this.set_size(m.width, m.height);
-        this._scrim.set_size(m.width, m.height);
-        const h1 = Math.round(m.height * 0.36), h2 = Math.round(m.height * 0.64);
-        this._scrimParts[0].set_position(0, 0);
-        this._scrimParts[0].set_size(m.width, h1);
-        this._scrimParts[1].set_position(0, h1);
-        this._scrimParts[1].set_size(m.width, h2 - h1);
-        this._scrimParts[2].set_position(0, h2);
-        this._scrimParts[2].set_size(m.width, m.height - h2);
+        this._scrim.setArea(m.width, m.height);
         this._shield.set_size(m.width, m.height);
         this._searchShield.set_size(m.width, m.height);
         this._content.set_size(m.width, m.height);
@@ -461,7 +452,7 @@ export const Layer = GObject.registerClass({
         this.board.set_position(0, 0);
         this.board.setGrid(grid, m.width, m.height);
 
-        const pillH = Math.round(60 * sf);
+        const pillH = Math.round(PILL_H * sf);
         this.pill.set_position(grid.pillX, grid.pillY);
         this.pill.set_size(grid.pillW, pillH);
         this.results.set_position(grid.pillX, grid.pillY + pillH + Math.round(RESULTS_GAP * sf));
@@ -470,13 +461,7 @@ export const Layer = GObject.registerClass({
         this.editBar.height = pillH;
         this.clock.width = m.width;
         this.clock.set_position(0, grid.clockY);
-        // St's radial gradient is circular: draw a circle and stretch it
-        // into an ellipse around the digits
-        const haloD = Math.round(300 * sf);
-        this._clockHalo.set_size(haloD, haloD);
-        this._clockHalo.set_pivot_point(0.5, 0.5);
-        this._clockHalo.scale_x = 8 / 3;
-        this._clockHalo.set_position(Math.round((m.width - haloD) / 2), grid.clockY + Math.round(50 * sf) - haloD / 2);
+        this._clockHalo.place(m.width / 2, grid.clockY + Math.round(50 * sf), sf);
         this._syncClockHalo();
         this._syncCoach();
     }
@@ -489,68 +474,35 @@ export const Layer = GObject.registerClass({
     _syncTheme() {
         const dark = this._theme.dark;
         this.editBar.setAccent(this._theme);
-        this._menu?.setDark(dark);
-        if (this._edit?.active)
+        this._menu.setDark(dark);
+        if (this._edit.active)
             this._edit.syncAccent();
-        this.remove_style_class_name(dark ? 'hs-light' : 'hs-dark');
-        this.add_style_class_name(dark ? 'hs-dark' : 'hs-light');
+        this.remove_style_class_name(dark ? 'cubby-light' : 'cubby-dark');
+        this.add_style_class_name(dark ? 'cubby-dark' : 'cubby-light');
         this.pill.setAccent(this._theme);
-        this._applyScrim(this._wallpaper?.luminance ?? 0.3);
+        this._syncWallpaper();
         this._paint(this._selected, !!this._selected && this._showSelection());
     }
 
-    // Vertical scrim: strong at the top, light in the middle, a little
-    // stronger at the bottom. Strength comes from the wallpaper's luminance.
-    _scrimAlpha(fy, lum) {
-        const a = 0.38 + lum * 0.42, b = 0.04 + lum * 0.3;
-        if (fy < 0.36)
-            return a + (b - a) * (fy / 0.36);
-        if (fy < 0.64)
-            return b;
-        return b + (a * 0.8 - b) * ((fy - 0.64) / 0.36);
+    _syncWallpaper() {
+        const lum = this._wallpaper.luminance;
+        this._scrim.setLuminance(lum);
+        this.clock.setBright(lum > 0.5);
+        this._syncClockHalo();
     }
 
     _syncClockHalo() {
         const m = this.monitor;
-        const lum = this._wallpaper?.luminance;
-        if (!m || !this.grid || lum === undefined)
+        if (!m || !this.grid)
             return;
-        const bright = lum > 0.5;
+        // the digits, as fractions of the monitor
         const half = 170 / m.width;
-        const fy0 = this.grid.clockY / m.height, fy1 = (this.grid.clockY + 120) / m.height;
-        const ext = this._wallpaper.regionExtremes(0.5 - half, fy0, 0.5 + half, fy1, luminance);
-        let h = 0;
-        const haloColor = bright ? [255, 255, 255] : [12, 12, 20];
-        if (ext) {
-            const s = this._scrimAlpha((fy0 + fy1) / 2, lum);
-            const base = bright ? ext.darkest : ext.brightest;
-            const over = (top, al, bot) => bot.map((v, i) => top[i] * al + v * (1 - al));
-            const bg = over([12, 12, 20], s, base);
-            const text = bright ? [30, 30, 46] : [255, 255, 255];
-            while (h < 0.9 && contrast(text, over(haloColor, h, bg)) < 5)
-                h += 0.02;
-        }
-        this._clockHalo.visible = h > 0 && this.clock.visible;
-        const [r, g, b] = haloColor;
-        // the outer digits sit at about 60% of the radius, where the
-        // gradient has faded to 0.4 of its centre value
-        const centre = Math.min(0.9, h / 0.4);
-        this._clockHalo.style = `background-gradient-direction: radial; ` +
-            `background-gradient-start: rgba(${r},${g},${b},${centre.toFixed(2)}); ` +
-            `background-gradient-end: rgba(${r},${g},${b},0);`;
+        const y0 = this.grid.clockY / m.height;
+        const y1 = (this.grid.clockY + 120) / m.height;
+        const scrim = scrimAlpha((y0 + y1) / 2, this._wallpaper.luminance);
+        const needed = this._clockHalo.update(this._wallpaper, [0.5 - half, y0, 0.5 + half, y1], scrim);
+        this._clockHalo.visible = needed && this.clock.visible;
         this._clockHalo.opacity = this.clock.opacity;
-    }
-
-    _applyScrim(lum) {
-        this._scrimStrength = lum;
-        this.clock.setBright(lum > 0.5);
-        this._syncClockHalo();
-        const a = (0.38 + lum * 0.42).toFixed(3), b = (0.04 + lum * 0.3).toFixed(3);
-        const a2 = (a * 0.8).toFixed(3);
-        const grad = (from, to) => `background-gradient-direction: vertical; background-gradient-start: rgba(12,12,20,${from}); background-gradient-end: rgba(12,12,20,${to});`;
-        this._scrimParts[0].style = grad(a, b);
-        this._scrimParts[1].style = `background-color: rgba(12,12,20,${b});`;
-        this._scrimParts[2].style = grad(b, a2);
     }
 
     // ---- open / close ----
@@ -581,7 +533,7 @@ export const Layer = GObject.registerClass({
         this._kb = false;
         this._setSelected(null);
         this.grab_key_focus();
-        this._syncCoach();
+        this._syncCoach({delay: 600});
         this._syncClock();
 
         // the layer covers one monitor; a press on another one closes it
@@ -871,18 +823,20 @@ export const Layer = GObject.registerClass({
 
     // ---- first-run tip ----
 
-    _syncCoach() {
+    // The tip waits a moment after the layer opens, so it does not compete
+    // with the opening wave; coming back from a folder or search it doesn't.
+    _syncCoach({delay = 0} = {}) {
         const show = this._isOpen && !this._settings.get_boolean('tip-dismissed') &&
             this.mode === Mode.BOARD && !!this.grid;
         if (show) {
-            const sf = this.grid.sf ?? 1;
+            const sf = this.grid.sf;
             const [, natH] = this.coach.get_preferred_height(-1);
             const y = Math.max(this.grid.bottomY + Math.round(24 * sf), this.height - Math.round(COACH_BOTTOM * sf) - natH);
             this._centerX(this.coach, Math.min(y, this.height - natH - 8));
             if (!this.coach.visible) {
                 this.coach.show();
                 this.coach.opacity = 0;
-                this.coach.ease({opacity: 255, delay: 600, duration: 300});
+                this.coach.ease({opacity: 255, delay, duration: 300});
             } else if (this._coachLeaving) {
                 this._coachLeaving = false;
                 this.coach.remove_all_transitions();
@@ -930,16 +884,9 @@ export const Layer = GObject.registerClass({
         this.tooltip.showFor(null);
         this.pill.setSearching(true);
         this._searchShield.show();
-        if (!this.board.get_effect('hs-blur')) {
-            this.board.add_effect_with_name('hs-blur', new Shell.BlurEffect({
-                mode: Shell.BlurMode.ACTOR,
-                radius: 0,
-                brightness: 1,
-            }));
-        }
         this.board.remove_transition('opacity');
         this.board.ease({opacity: SEARCH_BOARD_OPACITY, duration: SEARCH_FADE_MS});
-        this.board.ease_property('@effects.hs-blur.radius', SEARCH_BLUR_RADIUS, {duration: SEARCH_FADE_MS});
+        easeBlur(this.board, 'search-blur', SEARCH_BLUR_RADIUS, SEARCH_FADE_MS);
         this.results.remove_all_transitions();
         this.results.show();
         this.results.opacity = 0;
@@ -982,15 +929,7 @@ export const Layer = GObject.registerClass({
         this.board.remove_transition('opacity');
         const duration = instant ? 0 : SEARCH_FADE_MS;
         this.board.ease({opacity: 255, duration});
-        if (this.board.get_effect('hs-blur')) {
-            this.board.ease_property('@effects.hs-blur.radius', 0, {
-                duration,
-                onStopped: () => {
-                    if (this.mode !== Mode.SEARCH)
-                        this.board.remove_effect_by_name('hs-blur');
-                },
-            });
-        }
+        easeBlur(this.board, 'search-blur', 0, duration);
     }
 
     _renderResults() {
@@ -1089,7 +1028,7 @@ export const Layer = GObject.registerClass({
     }
 
     _wantsTooltip(actor) {
-        return actor?.kind === 'more' || (actor?.kind === 'app' && !this.names && this.board.contains(actor));
+        return actor?.kind === 'more' || (actor?.kind === 'app' && !this.board.names && this.board.contains(actor));
     }
 
     _syncTooltip() {
@@ -1116,7 +1055,7 @@ export const Layer = GObject.registerClass({
             this.close({instant: true});
             return;
         }
-        if (focus && this.contains(focus) && focus.has_style_class_name?.('hs-focusable'))
+        if (focus && this.contains(focus) && focus.has_style_class_name?.('cubby-focusable'))
             this._setSelected(focus);
         else if (this.mode !== Mode.SEARCH && focus !== this.pill.entry.clutter_text)
             this._setSelected(null);
@@ -1361,6 +1300,7 @@ export const Layer = GObject.registerClass({
         const state = event.get_state();
         const ctrl = (state & Clutter.ModifierType.CONTROL_MASK) !== 0;
         const shift = (state & Clutter.ModifierType.SHIFT_MASK) !== 0;
+        const alt = (state & Clutter.ModifierType.MOD1_MASK) !== 0;
         const text = this.pill.entry.clutter_text;
         if (global.stage.key_focus === text && text.has_preedit())
             return Clutter.EVENT_PROPAGATE;
@@ -1369,125 +1309,93 @@ export const Layer = GObject.registerClass({
             this._stepBack();
             return Clutter.EVENT_STOP;
         }
-
         if (ctrl && (sym === Clutter.KEY_e || sym === Clutter.KEY_E)) {
             this.setEditing(this.mode !== Mode.EDIT);
             return Clutter.EVENT_STOP;
         }
+        if (this.mode === Mode.EDIT)
+            return this._onEditKey(sym, shift);
 
-        if ((sym === Clutter.KEY_Menu || (shift && sym === Clutter.KEY_F10)) && this.mode !== Mode.EDIT) {
-            const appItem = this._selected ? this._appItemFor(this._selected) : null;
-            if (appItem) {
-                this._openAppMenu(appItem, {keyboard: true});
-                return Clutter.EVENT_STOP;
-            }
-            if (this.mode === Mode.BOARD) {
-                const at = this._selected ?? this.pill;
-                const e = at.get_transformed_extents();
-                this._menu.open(e.get_x() + e.get_width() / 2, e.get_y() + e.get_height() / 2);
-                return Clutter.EVENT_STOP;
-            }
+        if ((sym === Clutter.KEY_Menu || (shift && sym === Clutter.KEY_F10)) && this._openMenuForSelection())
+            return Clutter.EVENT_STOP;
+
+        const dir = ARROWS[sym];
+        const enter = sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter;
+        if (dir && alt && this.mode === Mode.FOLDER) {
+            this._moveFolderItem(dir);
+            return Clutter.EVENT_STOP;
         }
-
-        const dir = {
-            [Clutter.KEY_Left]: [-1, 0], [Clutter.KEY_Right]: [1, 0],
-            [Clutter.KEY_Up]: [0, -1], [Clutter.KEY_Down]: [0, 1],
-        }[sym];
-
-        if (this.mode === Mode.EDIT) {
-            const done = global.stage.key_focus === this.editBar.done;
-            if ((sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) && !done) {
-                this.setEditing(false);
-                return Clutter.EVENT_STOP;
-            }
-            if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
-                this._tabTiles(sym === Clutter.KEY_ISO_Left_Tab || shift);
-                return Clutter.EVENT_STOP;
-            }
-            if (dir) {
-                let tile = this._focusedTile();
-                if (!tile) {
-                    this._tabTiles(false);
-                    tile = this._focusedTile();
-                }
-                this._edit.key(tile, sym, shift);
-                return Clutter.EVENT_STOP;
-            }
-            return Clutter.EVENT_PROPAGATE;
+        if (dir) {
+            this._move(...dir);
+            return Clutter.EVENT_STOP;
         }
-
-        if (this.mode === Mode.SEARCH) {
-            if (dir) {
-                this._move(...dir);
-                return Clutter.EVENT_STOP;
-            }
-            if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
-                this._tab(sym === Clutter.KEY_ISO_Left_Tab || shift);
-                return Clutter.EVENT_STOP;
-            }
-            if (sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) {
-                if (this._selected)
-                    this.activateResult(this._selected, {newWindow: ctrl});
-                else if (this._fallback) {
-                    this._fallback.run();
-                    this.close();
-                }
-                return Clutter.EVENT_STOP;
-            }
-            return Clutter.EVENT_PROPAGATE;
+        if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
+            this._tab(sym === Clutter.KEY_ISO_Left_Tab || shift);
+            return Clutter.EVENT_STOP;
         }
-
-        if (this.mode === Mode.BOARD) {
-            if (dir) {
-                this._move(...dir);
-                return Clutter.EVENT_STOP;
+        if (enter && this.mode === Mode.SEARCH) {
+            if (this._selected) {
+                this.activateResult(this._selected, {newWindow: ctrl});
+            } else if (this._fallback) {
+                this._fallback.run();
+                this.close();
             }
-            if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
-                this._tab(sym === Clutter.KEY_ISO_Left_Tab || shift);
-                return Clutter.EVENT_STOP;
-            }
-            if ((sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) && ctrl &&
-                this._selected?.kind === 'app') {
-                this.activateApp(this._selected.app, this._selected, {newWindow: true});
-                return Clutter.EVENT_STOP;
-            }
-            if (global.stage.key_focus !== text && isPrintable(event)) {
-                this._startSearch(event);
-                return Clutter.EVENT_STOP;
-            }
+            return Clutter.EVENT_STOP;
         }
-
-        if (this.mode === Mode.FOLDER) {
-            const alt = (state & Clutter.ModifierType.MOD1_MASK) !== 0;
-            if (dir && alt) {
-                // Alt+arrows move the focused app within the folder
-                if (this._selected?.kind === 'app' && this.folderView.items.includes(this._selected)) {
-                    const item = this._selected;
-                    this._saveFolderOrder(this.folderView.moveItem(item, dir[0] + dir[1] * 6));
-                    ensureActorVisibleInScrollView(this.folderView.scrollView, item);
-                }
-                return Clutter.EVENT_STOP;
-            }
-            if (dir) {
-                this._move(...dir);
-                return Clutter.EVENT_STOP;
-            }
-            if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
-                this._tab(sym === Clutter.KEY_ISO_Left_Tab || shift);
-                return Clutter.EVENT_STOP;
-            }
-            if ((sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) && ctrl &&
-                this._selected?.kind === 'app') {
-                this.activateApp(this._selected.app, this._selected, {newWindow: true});
-                return Clutter.EVENT_STOP;
-            }
-            // typing inside a folder leaves it and searches everything
-            if (isPrintable(event)) {
-                this._startSearch(event);
-                return Clutter.EVENT_STOP;
-            }
+        // plain Enter is left to the focused button
+        if (enter && ctrl && this._selected?.kind === 'app') {
+            this.activateApp(this._selected.app, this._selected, {newWindow: true});
+            return Clutter.EVENT_STOP;
+        }
+        // typing on the board or in a folder searches everything
+        if (this.mode !== Mode.SEARCH && global.stage.key_focus !== text && isPrintable(event)) {
+            this._startSearch(event);
+            return Clutter.EVENT_STOP;
         }
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    _onEditKey(sym, shift) {
+        if ((sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) &&
+            global.stage.key_focus !== this.editBar.done) {
+            this.setEditing(false);
+            return Clutter.EVENT_STOP;
+        }
+        if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
+            this._tabTiles(sym === Clutter.KEY_ISO_Left_Tab || shift);
+            return Clutter.EVENT_STOP;
+        }
+        const dir = ARROWS[sym];
+        if (!dir)
+            return Clutter.EVENT_PROPAGATE;
+        if (!this._focusedTile())
+            this._tabTiles(false);
+        this._edit.key(this._focusedTile(), dir, shift);
+        return Clutter.EVENT_STOP;
+    }
+
+    // Menu key or Shift+F10: the app menu for a selected app, the layout
+    // menu on the board. Returns whether a menu opened.
+    _openMenuForSelection() {
+        const appItem = this._selected ? this._appItemFor(this._selected) : null;
+        if (appItem) {
+            this._openAppMenu(appItem, {keyboard: true});
+            return true;
+        }
+        if (this.mode !== Mode.BOARD)
+            return false;
+        const e = (this._selected ?? this.pill).get_transformed_extents();
+        this._menu.open(e.get_x() + e.get_width() / 2, e.get_y() + e.get_height() / 2);
+        return true;
+    }
+
+    // Alt+arrows move the selected app within the open folder
+    _moveFolderItem(dir) {
+        const item = this._selected;
+        if (item?.kind !== 'app' || !this.folderView.items.includes(item))
+            return;
+        this._saveFolderOrder(this.folderView.moveItem(item, dir));
+        ensureActorVisibleInScrollView(this.folderView.scrollView, item);
     }
 
     // Esc: menu, then edit mode, then folder, then search, then close.

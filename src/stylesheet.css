@@ -1,38 +1,37 @@
 /* Cubby. Light and dark glass are class variants on the layer root
-   (.hs-dark / .hs-light). Accent-coloured parts (selection, caret, keycap,
+   (.cubby-dark / .cubby-light). Accent-coloured parts (selection, caret, keycap,
    edit outlines, Done) are styled from JS because the accent may be a
    custom hex. Sizes that depend on the grid unit are set from JS. */
 
 /* ---- hover and selection fade instead of snapping ---- */
-.hs-slot,
-.hs-chip,
-.hs-pill,
-.hs-result,
-.hs-other,
-.hs-folder-item,
-.hs-folder-close,
-.hs-folder-sort,
-.hs-done,
-.hs-coach-ok,
-.hs-dot { transition-duration: 120ms; }
+.cubby-slot,
+.cubby-chip,
+.cubby-pill,
+.cubby-result,
+.cubby-other,
+.cubby-folder-item,
+.cubby-folder-close,
+.cubby-folder-sort,
+.cubby-done,
+.cubby-coach-ok,
+.cubby-dot { transition-duration: 120ms; }
 
 /* ---- shared shapes ---- */
-.hs-tile {
+.cubby-tile {
   border-radius: 32px;
   border-width: 1px;
   border-style: solid;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
 }
-.hs-slot { border-radius: 24px; }
-.hs-name {
+.cubby-slot { border-radius: 24px; }
+.cubby-name {
   font-size: 13.5px;
   font-weight: 600;
   text-align: center;
 }
-.hs-icon { icon-shadow: 0 3px 6px rgba(0, 0, 0, 0.22); }
-.hs-mini { border-radius: 18px; }
-.hs-mini-bare { background-color: transparent; }
-.hs-badge {
+.cubby-icon { icon-shadow: 0 3px 6px rgba(0, 0, 0, 0.22); }
+.cubby-mini { border-radius: 18px; }
+.cubby-badge {
   min-width: 16px;
   padding: 3px 7px;
   border-radius: 12px;
@@ -42,7 +41,7 @@
   font-weight: 700;
   text-align: center;
 }
-.hs-chip {
+.cubby-chip {
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
@@ -51,15 +50,15 @@
   font-size: 14px;
   font-weight: 600;
 }
-.hs-pips { spacing: 3px; }
-.hs-pip {
+.cubby-pips { spacing: 3px; }
+.cubby-pip {
   width: 10px;
   height: 4px;
   border-radius: 2px;
 }
-.hs-pip-focused { width: 22px; }
-.hs-pips-small .hs-pip { width: 8px; height: 3px; border-radius: 2px; }
-.hs-new {
+.cubby-pip-focused { width: 22px; }
+.cubby-pips-small .cubby-pip { width: 8px; height: 3px; border-radius: 2px; }
+.cubby-new {
   font-size: 13px;
   font-weight: 700;
   padding: 0 5px;
@@ -68,7 +67,7 @@
   border-style: solid;
 }
 
-.hs-new-dot {
+.cubby-new-dot {
   width: 8px;
   height: 8px;
   border-radius: 4px;
@@ -77,7 +76,7 @@
 }
 
 /* ---- search field ---- */
-.hs-pill {
+.cubby-pill {
   height: 60px;
   border-radius: 30px;
   padding: 0 22px;
@@ -86,10 +85,10 @@
   border-style: solid;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
 }
-.hs-pill-icon { icon-size: 20px; }
-.hs-pill StEntry.hs-entry,
-.hs-pill StEntry.hs-entry:hover,
-.hs-pill StEntry.hs-entry:focus {
+.cubby-pill-icon { icon-size: 20px; }
+.cubby-pill StEntry.cubby-entry,
+.cubby-pill StEntry.cubby-entry:hover,
+.cubby-pill StEntry.cubby-entry:focus {
   font-size: 19px;
   font-weight: 500;
   background-color: transparent;
@@ -98,9 +97,9 @@
   padding: 0;
   margin: 0;
 }
-.hs-pill-hint { spacing: 8px; font-size: 14px; }
-.hs-pill-action { font-weight: 600; }
-.hs-keycap {
+.cubby-pill-hint { spacing: 8px; font-size: 14px; }
+.cubby-pill-action { font-weight: 600; }
+.cubby-keycap {
   font-size: 13px;
   font-weight: 600;
   border-radius: 7px;
@@ -108,9 +107,9 @@
 }
 
 /* ---- clock ---- */
-.hs-clock { spacing: 10px; }
-.hs-clock-row { spacing: 8px; }
-.hs-clock-time {
+.cubby-clock { spacing: 10px; }
+.cubby-clock-row { spacing: 8px; }
+.cubby-clock-time {
   font-size: 92px;
   font-weight: 300;
   letter-spacing: -0.5px;
@@ -118,19 +117,19 @@
   color: #ffffff;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
-.hs-clock-period {
+.cubby-clock-period {
   font-size: 28px;
   font-weight: 400;
   padding-bottom: 14px;
   color: #ffffff;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
-.hs-clock-on-bright .hs-clock-time,
-.hs-clock-on-bright .hs-clock-period {
+.cubby-clock-on-bright .cubby-clock-time,
+.cubby-clock-on-bright .cubby-clock-period {
   color: #1e1e2e;
   text-shadow: 0 0 18px rgba(255, 255, 255, 0.6);
 }
-.hs-clock-date {
+.cubby-clock-date {
   font-size: 16px;
   font-weight: 600;
   padding: 5px 14px;
@@ -140,7 +139,7 @@
 }
 
 /* ---- search results ---- */
-.hs-results {
+.cubby-results {
   padding: 12px;
   spacing: 10px;
   border-radius: 28px;
@@ -148,62 +147,62 @@
   border-style: solid;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
 }
-.hs-sec {
+.cubby-sec {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.6px;
   padding: 2px 10px 0;
 }
-.hs-result {
+.cubby-result {
   height: 122px;
   border-radius: 20px;
   padding: 12px 6px 0;
 }
-.hs-result-box { spacing: 8px; }
-.hs-result-name { font-size: 13.5px; font-weight: 600; max-width: 136px; }
-.hs-result-texts { spacing: 2px; }
-.hs-result-caption { font-size: 13px; max-width: 140px; }
-.hs-other-flow { padding: 0 6px 2px; }
-.hs-other {
+.cubby-result-box { spacing: 8px; }
+.cubby-result-name { font-size: 13.5px; font-weight: 600; max-width: 136px; }
+.cubby-result-texts { spacing: 2px; }
+.cubby-result-caption { font-size: 13px; max-width: 140px; }
+.cubby-other-flow { padding: 0 6px 2px; }
+.cubby-other {
   height: 38px;
   border-radius: 19px;
   padding: 0 14px 0 10px;
 }
-.hs-other-box { spacing: 9px; }
-.hs-other-name { font-size: 14px; max-width: 420px; }
-.hs-other-source { font-size: 13px; }
-.hs-none { padding: 22px 18px; font-size: 15px; }
+.cubby-other-box { spacing: 9px; }
+.cubby-other-name { font-size: 14px; max-width: 420px; }
+.cubby-other-source { font-size: 13px; }
+.cubby-none { padding: 22px 18px; font-size: 15px; }
 
 /* ---- folder view ---- */
-.hs-shield { background-color: rgba(12, 12, 20, 0.42); }
-.hs-folder {
+.cubby-shield { background-color: rgba(12, 12, 20, 0.42); }
+.cubby-folder {
   border-radius: 32px;
   border-width: 1px;
   border-style: solid;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
 }
-.hs-folder-title { spacing: 10px; }
-.hs-folder-title-name { font-size: 24px; font-weight: 700; }
-.hs-folder-title-count { font-size: 14px; font-weight: 500; padding-bottom: 3px; }
-.hs-folder-close {
+.cubby-folder-title { spacing: 10px; }
+.cubby-folder-title-name { font-size: 24px; font-weight: 700; }
+.cubby-folder-title-count { font-size: 14px; font-weight: 500; padding-bottom: 3px; }
+.cubby-folder-close {
   width: 40px;
   height: 40px;
   border-radius: 20px;
   padding: 0;
 }
-.hs-folder-item { border-radius: 24px; }
-.hs-folder-item-dragging { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
-.hs-folder-sort {
+.cubby-folder-item { border-radius: 24px; }
+.cubby-folder-item-dragging { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+.cubby-folder-sort {
   font-size: 13px;
   font-weight: 600;
   border-radius: 15px;
   padding: 6px 12px;
 }
-.hs-folder-item-box { spacing: 13px; }
-.hs-folder-name { font-size: 14px; font-weight: 600; max-width: 150px; text-align: center; }
+.cubby-folder-item-box { spacing: 13px; }
+.cubby-folder-name { font-size: 14px; font-weight: 600; max-width: 150px; text-align: center; }
 
 /* ---- tooltip ---- */
-.hs-tooltip {
+.cubby-tooltip {
   padding: 6px 11px;
   border-radius: 10px;
   spacing: 6px;
@@ -211,33 +210,33 @@
   border-style: solid;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
-.hs-tooltip-main { font-size: 13.5px; font-weight: 600; }
-.hs-tooltip-sub { font-size: 13px; font-weight: 500; }
+.cubby-tooltip-main { font-size: 13.5px; font-weight: 600; }
+.cubby-tooltip-sub { font-size: 13px; font-weight: 500; }
 
 /* ---- edit mode ---- */
-.hs-tile-dragging { box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45); }
-.hs-grip {
+.cubby-tile-dragging { box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45); }
+.cubby-grip {
   border-radius: 14px;
   border-width: 1px;
   border-style: solid;
   padding: 9px 13px;
 }
-.hs-grip-dot { width: 4px; height: 4px; border-radius: 2px; }
-.hs-resize {
+.cubby-grip-dot { width: 4px; height: 4px; border-radius: 2px; }
+.cubby-resize {
   border-radius: 17px;
   border: 2px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
-.hs-ghost {
+.cubby-ghost {
   border-radius: 32px;
   border: 2px solid #a6e3a1;
   background-color: rgba(166, 227, 161, 0.12);
 }
-.hs-ghost-bad {
+.cubby-ghost-bad {
   border-color: #f38ba8;
   background-color: rgba(243, 139, 168, 0.12);
 }
-.hs-editbar {
+.cubby-editbar {
   height: 60px;
   border-radius: 30px;
   padding: 0 10px 0 26px;
@@ -247,14 +246,14 @@
   font-size: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
 }
-.hs-editbar-title { font-weight: 700; }
-.hs-done {
+.cubby-editbar-title { font-weight: 700; }
+.cubby-done {
   font-size: 14px;
   font-weight: 700;
   border-radius: 21px;
   padding: 11px 22px;
 }
-.hs-coach {
+.cubby-coach {
   height: 44px;
   border-radius: 22px;
   padding: 0 8px 0 18px;
@@ -263,25 +262,25 @@
   border-style: solid;
   font-size: 14px;
 }
-.hs-coach-ok {
+.cubby-coach-ok {
   font-size: 13px;
   font-weight: 700;
   border-radius: 15px;
   padding: 7px 14px;
 }
-.hs-menu .popup-menu-content {
+.cubby-menu .popup-menu-content {
   border-radius: 16px;
   padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
   min-width: 230px;
 }
-.hs-menu .popup-menu-item { border-radius: 10px; }
-.hs-menu-accel { font-size: 13px; padding-left: 20px; }
+.cubby-menu .popup-menu-item { border-radius: 10px; }
+.cubby-menu-accel { font-size: 13px; padding-left: 20px; }
 
 /* ---- page dots ---- */
-.hs-dots { spacing: 10px; }
-.hs-dot {
+.cubby-dots { spacing: 10px; }
+.cubby-dot {
   width: 8px;
   height: 8px;
   border-radius: 4px;
@@ -289,131 +288,131 @@
 }
 
 /* ---- dark glass ---- */
-.hs-dark .hs-tile { background-color: rgba(28, 27, 38, 0.74); border-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-name,
-.hs-dark .hs-chip,
-.hs-dark .hs-badge,
-.hs-dark .hs-new,
-.hs-dark .hs-pill-action,
-.hs-dark .hs-keycap,
-.hs-dark .hs-pill StEntry.hs-entry { color: #eff1f5; }
-.hs-dark .hs-slot:hover { background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-mini { background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-mini-bare { background-color: transparent; }
-.hs-dark .hs-badge,
-.hs-dark .hs-chip,
-.hs-dark .hs-new { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-new-dot { background-color: #eff1f5; border-color: rgba(26, 25, 36, 0.84); }
-.hs-dark .hs-pip { background-color: rgba(255, 255, 255, 0.92); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
-.hs-dark .hs-pill { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-pill-icon { color: rgba(239, 241, 245, 0.75); }
-.hs-dark .hs-pill StEntry.hs-entry StLabel.hint-text,
-.hs-dark .hs-pill-count { color: rgba(239, 241, 245, 0.66); }
-.hs-dark .hs-results,
-.hs-dark .hs-tooltip { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-sec,
-.hs-dark .hs-result-caption,
-.hs-dark .hs-other-source,
-.hs-dark .hs-none,
-.hs-dark .hs-tooltip-sub { color: rgba(239, 241, 245, 0.66); }
-.hs-dark .hs-result-name,
-.hs-dark .hs-result-caption.hs-live,
-.hs-dark .hs-other,
-.hs-dark .hs-tooltip-main { color: #eff1f5; }
-.hs-dark .hs-other { background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-result:hover,
-.hs-dark .hs-other:hover { background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-folder { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-folder-title-name,
-.hs-dark .hs-folder-name { color: #eff1f5; }
-.hs-dark .hs-folder-title-count,
-.hs-dark .hs-folder-close { color: rgba(239, 241, 245, 0.66); }
-.hs-dark .hs-folder-close:hover { color: #eff1f5; background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-folder-item:hover,
-.hs-dark .hs-folder-item-dragging { background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-folder-sort { color: rgba(239, 241, 245, 0.66); }
-.hs-dark .hs-folder-sort:hover,
-.hs-dark .hs-folder-sort:focus { color: #eff1f5; background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-board-editing .hs-slot:hover { background-color: transparent; }
-.hs-dark .hs-grip,
-.hs-dark .hs-editbar,
-.hs-dark .hs-coach { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-grip-dot { background-color: #eff1f5; }
-.hs-dark .hs-editbar-title,
-.hs-dark .hs-coach,
-.hs-dark .hs-coach-ok { color: #eff1f5; }
-.hs-dark .hs-editbar-text { color: rgba(239, 241, 245, 0.66); }
-.hs-dark .hs-coach-ok { background-color: rgba(255, 255, 255, 0.075); }
-.hs-dark .hs-coach-ok:hover { background-color: rgba(255, 255, 255, 0.14); }
-.hs-menu.hs-dark .popup-menu-content { background-color: rgba(26, 25, 36, 0.84); color: #eff1f5; }
-.hs-menu.hs-dark .popup-menu-item { color: #eff1f5; }
-.hs-menu.hs-dark .hs-menu-accel { color: rgba(239, 241, 245, 0.66); }
-.hs-menu.hs-dark .popup-separator-menu-item-separator { background-color: rgba(255, 255, 255, 0.10); }
-.hs-dark .hs-clock-date { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); color: #eff1f5; }
-.hs-dark .hs-dot { background-color: rgba(255, 255, 255, 0.35); }
-.hs-dark .hs-dot:checked { background-color: #eff1f5; }
+.cubby-dark .cubby-tile { background-color: rgba(28, 27, 38, 0.74); border-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-name,
+.cubby-dark .cubby-chip,
+.cubby-dark .cubby-badge,
+.cubby-dark .cubby-new,
+.cubby-dark .cubby-pill-action,
+.cubby-dark .cubby-keycap,
+.cubby-dark .cubby-pill StEntry.cubby-entry { color: #eff1f5; }
+.cubby-dark .cubby-slot:hover { background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-mini { background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-mini-bare { background-color: transparent; }
+.cubby-dark .cubby-badge,
+.cubby-dark .cubby-chip,
+.cubby-dark .cubby-new { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-new-dot { background-color: #eff1f5; border-color: rgba(26, 25, 36, 0.84); }
+.cubby-dark .cubby-pip { background-color: rgba(255, 255, 255, 0.92); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.cubby-dark .cubby-pill { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-pill-icon { color: rgba(239, 241, 245, 0.75); }
+.cubby-dark .cubby-pill StEntry.cubby-entry StLabel.hint-text,
+.cubby-dark .cubby-pill-count { color: rgba(239, 241, 245, 0.66); }
+.cubby-dark .cubby-results,
+.cubby-dark .cubby-tooltip { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-sec,
+.cubby-dark .cubby-result-caption,
+.cubby-dark .cubby-other-source,
+.cubby-dark .cubby-none,
+.cubby-dark .cubby-tooltip-sub { color: rgba(239, 241, 245, 0.66); }
+.cubby-dark .cubby-result-name,
+.cubby-dark .cubby-result-caption.cubby-live,
+.cubby-dark .cubby-other,
+.cubby-dark .cubby-tooltip-main { color: #eff1f5; }
+.cubby-dark .cubby-other { background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-result:hover,
+.cubby-dark .cubby-other:hover { background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-folder { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-folder-title-name,
+.cubby-dark .cubby-folder-name { color: #eff1f5; }
+.cubby-dark .cubby-folder-title-count,
+.cubby-dark .cubby-folder-close { color: rgba(239, 241, 245, 0.66); }
+.cubby-dark .cubby-folder-close:hover { color: #eff1f5; background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-folder-item:hover,
+.cubby-dark .cubby-folder-item-dragging { background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-folder-sort { color: rgba(239, 241, 245, 0.66); }
+.cubby-dark .cubby-folder-sort:hover,
+.cubby-dark .cubby-folder-sort:focus { color: #eff1f5; background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-board-editing .cubby-slot:hover { background-color: transparent; }
+.cubby-dark .cubby-grip,
+.cubby-dark .cubby-editbar,
+.cubby-dark .cubby-coach { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-grip-dot { background-color: #eff1f5; }
+.cubby-dark .cubby-editbar-title,
+.cubby-dark .cubby-coach,
+.cubby-dark .cubby-coach-ok { color: #eff1f5; }
+.cubby-dark .cubby-editbar-text { color: rgba(239, 241, 245, 0.66); }
+.cubby-dark .cubby-coach-ok { background-color: rgba(255, 255, 255, 0.075); }
+.cubby-dark .cubby-coach-ok:hover { background-color: rgba(255, 255, 255, 0.14); }
+.cubby-menu.cubby-dark .popup-menu-content { background-color: rgba(26, 25, 36, 0.84); color: #eff1f5; }
+.cubby-menu.cubby-dark .popup-menu-item { color: #eff1f5; }
+.cubby-menu.cubby-dark .cubby-menu-accel { color: rgba(239, 241, 245, 0.66); }
+.cubby-menu.cubby-dark .popup-separator-menu-item-separator { background-color: rgba(255, 255, 255, 0.10); }
+.cubby-dark .cubby-clock-date { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); color: #eff1f5; }
+.cubby-dark .cubby-dot { background-color: rgba(255, 255, 255, 0.35); }
+.cubby-dark .cubby-dot:checked { background-color: #eff1f5; }
 
 /* ---- light glass ---- */
-.hs-light .hs-tile { background-color: rgba(244, 245, 248, 0.80); border-color: rgba(255, 255, 255, 0.75); }
-.hs-light .hs-name,
-.hs-light .hs-chip,
-.hs-light .hs-badge,
-.hs-light .hs-new,
-.hs-light .hs-pill-action,
-.hs-light .hs-keycap,
-.hs-light .hs-pill StEntry.hs-entry { color: #1e1e2e; }
-.hs-light .hs-slot:hover { background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-mini { background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-mini-bare { background-color: transparent; }
-.hs-light .hs-badge,
-.hs-light .hs-chip,
-.hs-light .hs-new { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
-.hs-light .hs-new-dot { background-color: #1e1e2e; border-color: rgba(246, 246, 249, 0.90); }
-.hs-light .hs-pip { background-color: rgba(30, 30, 46, 0.85); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
-.hs-light .hs-pill { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
-.hs-light .hs-pill-icon { color: rgba(30, 30, 46, 0.75); }
-.hs-light .hs-pill StEntry.hs-entry StLabel.hint-text,
-.hs-light .hs-pill-count { color: rgba(30, 30, 46, 0.70); }
-.hs-light .hs-results,
-.hs-light .hs-tooltip { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
-.hs-light .hs-sec,
-.hs-light .hs-result-caption,
-.hs-light .hs-other-source,
-.hs-light .hs-none,
-.hs-light .hs-tooltip-sub { color: rgba(30, 30, 46, 0.70); }
-.hs-light .hs-result-name,
-.hs-light .hs-result-caption.hs-live,
-.hs-light .hs-other,
-.hs-light .hs-tooltip-main { color: #1e1e2e; }
-.hs-light .hs-other { background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-result:hover,
-.hs-light .hs-other:hover { background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-folder { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
-.hs-light .hs-folder-title-name,
-.hs-light .hs-folder-name { color: #1e1e2e; }
-.hs-light .hs-folder-title-count,
-.hs-light .hs-folder-close { color: rgba(30, 30, 46, 0.70); }
-.hs-light .hs-folder-close:hover { color: #1e1e2e; background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-folder-item:hover,
-.hs-light .hs-folder-item-dragging { background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-folder-sort { color: rgba(30, 30, 46, 0.70); }
-.hs-light .hs-folder-sort:hover,
-.hs-light .hs-folder-sort:focus { color: #1e1e2e; background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-board-editing .hs-slot:hover { background-color: transparent; }
-.hs-light .hs-grip,
-.hs-light .hs-editbar,
-.hs-light .hs-coach { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
-.hs-light .hs-grip-dot { background-color: #1e1e2e; }
-.hs-light .hs-editbar-title,
-.hs-light .hs-coach,
-.hs-light .hs-coach-ok { color: #1e1e2e; }
-.hs-light .hs-editbar-text { color: rgba(30, 30, 46, 0.70); }
-.hs-light .hs-coach-ok { background-color: rgba(30, 30, 46, 0.065); }
-.hs-light .hs-coach-ok:hover { background-color: rgba(30, 30, 46, 0.12); }
-.hs-menu.hs-light .popup-menu-content { background-color: rgba(246, 246, 249, 0.90); color: #1e1e2e; border-color: rgba(255, 255, 255, 0.75); }
-.hs-menu.hs-light .popup-menu-item { color: #1e1e2e; }
-.hs-menu.hs-light .hs-menu-accel { color: rgba(30, 30, 46, 0.70); }
-.hs-menu.hs-light .popup-separator-menu-item-separator { background-color: rgba(30, 30, 46, 0.12); }
-.hs-light .hs-clock-date { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); color: #1e1e2e; }
-.hs-light .hs-dot { background-color: rgba(30, 30, 46, 0.30); }
-.hs-light .hs-dot:checked { background-color: #1e1e2e; }
+.cubby-light .cubby-tile { background-color: rgba(244, 245, 248, 0.80); border-color: rgba(255, 255, 255, 0.75); }
+.cubby-light .cubby-name,
+.cubby-light .cubby-chip,
+.cubby-light .cubby-badge,
+.cubby-light .cubby-new,
+.cubby-light .cubby-pill-action,
+.cubby-light .cubby-keycap,
+.cubby-light .cubby-pill StEntry.cubby-entry { color: #1e1e2e; }
+.cubby-light .cubby-slot:hover { background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-mini { background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-mini-bare { background-color: transparent; }
+.cubby-light .cubby-badge,
+.cubby-light .cubby-chip,
+.cubby-light .cubby-new { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.cubby-light .cubby-new-dot { background-color: #1e1e2e; border-color: rgba(246, 246, 249, 0.90); }
+.cubby-light .cubby-pip { background-color: rgba(30, 30, 46, 0.85); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.cubby-light .cubby-pill { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.cubby-light .cubby-pill-icon { color: rgba(30, 30, 46, 0.75); }
+.cubby-light .cubby-pill StEntry.cubby-entry StLabel.hint-text,
+.cubby-light .cubby-pill-count { color: rgba(30, 30, 46, 0.70); }
+.cubby-light .cubby-results,
+.cubby-light .cubby-tooltip { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.cubby-light .cubby-sec,
+.cubby-light .cubby-result-caption,
+.cubby-light .cubby-other-source,
+.cubby-light .cubby-none,
+.cubby-light .cubby-tooltip-sub { color: rgba(30, 30, 46, 0.70); }
+.cubby-light .cubby-result-name,
+.cubby-light .cubby-result-caption.cubby-live,
+.cubby-light .cubby-other,
+.cubby-light .cubby-tooltip-main { color: #1e1e2e; }
+.cubby-light .cubby-other { background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-result:hover,
+.cubby-light .cubby-other:hover { background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-folder { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.cubby-light .cubby-folder-title-name,
+.cubby-light .cubby-folder-name { color: #1e1e2e; }
+.cubby-light .cubby-folder-title-count,
+.cubby-light .cubby-folder-close { color: rgba(30, 30, 46, 0.70); }
+.cubby-light .cubby-folder-close:hover { color: #1e1e2e; background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-folder-item:hover,
+.cubby-light .cubby-folder-item-dragging { background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-folder-sort { color: rgba(30, 30, 46, 0.70); }
+.cubby-light .cubby-folder-sort:hover,
+.cubby-light .cubby-folder-sort:focus { color: #1e1e2e; background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-board-editing .cubby-slot:hover { background-color: transparent; }
+.cubby-light .cubby-grip,
+.cubby-light .cubby-editbar,
+.cubby-light .cubby-coach { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.cubby-light .cubby-grip-dot { background-color: #1e1e2e; }
+.cubby-light .cubby-editbar-title,
+.cubby-light .cubby-coach,
+.cubby-light .cubby-coach-ok { color: #1e1e2e; }
+.cubby-light .cubby-editbar-text { color: rgba(30, 30, 46, 0.70); }
+.cubby-light .cubby-coach-ok { background-color: rgba(30, 30, 46, 0.065); }
+.cubby-light .cubby-coach-ok:hover { background-color: rgba(30, 30, 46, 0.12); }
+.cubby-menu.cubby-light .popup-menu-content { background-color: rgba(246, 246, 249, 0.90); color: #1e1e2e; border-color: rgba(255, 255, 255, 0.75); }
+.cubby-menu.cubby-light .popup-menu-item { color: #1e1e2e; }
+.cubby-menu.cubby-light .cubby-menu-accel { color: rgba(30, 30, 46, 0.70); }
+.cubby-menu.cubby-light .popup-separator-menu-item-separator { background-color: rgba(30, 30, 46, 0.12); }
+.cubby-light .cubby-clock-date { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); color: #1e1e2e; }
+.cubby-light .cubby-dot { background-color: rgba(30, 30, 46, 0.30); }
+.cubby-light .cubby-dot:checked { background-color: #1e1e2e; }

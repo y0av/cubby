@@ -12,7 +12,7 @@ run() { # name size args... ; optional scale via SCALE env
     "$N" eval "Main.overview.showApps(); $js 1" >/dev/null
     sleep 1.4
     "$N" shot "$out/$name.png" >/dev/null
-    echo "$out/$name.png $("$N" eval 'const g = hsTest.layer().grid; `${g.cols}x${g.rows} U=${g.U} pages=${hsTest.layer().board.nPages}`')"
+    echo "$out/$name.png $("$N" eval 'const g = cubbyTest.layer().grid; `${g.cols}x${g.rows} U=${g.U} pages=${cubbyTest.layer().board.nPages}`')"
 }
 run 1366x768-stock 1366x768
 run 1920x1080-dock 1920x1080 --dock

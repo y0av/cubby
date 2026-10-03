@@ -17,17 +17,17 @@ export const SearchPill = GObject.registerClass({
 }, class SearchPill extends St.BoxLayout {
     _init() {
         super._init({
-            style_class: 'hs-pill',
+            style_class: 'cubby-pill',
             reactive: true,
             x_align: Clutter.ActorAlign.START,
         });
         this.add_child(new St.Icon({
-            style_class: 'hs-pill-icon',
+            style_class: 'cubby-pill-icon',
             icon_name: 'edit-find-symbolic',
             y_align: Clutter.ActorAlign.CENTER,
         }));
         this.entry = new St.Entry({
-            style_class: 'hs-entry',
+            style_class: 'cubby-entry',
             hint_text: _('Type to search apps, settings and files'),
             can_focus: true,
             x_expand: true,
@@ -37,13 +37,13 @@ export const SearchPill = GObject.registerClass({
         this.add_child(this.entry);
 
         this._hint = new St.BoxLayout({
-            style_class: 'hs-pill-hint',
+            style_class: 'cubby-pill-hint',
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
         });
-        this._count = new St.Label({style_class: 'hs-pill-count', y_align: Clutter.ActorAlign.CENTER});
-        this._keycap = new St.Label({style_class: 'hs-keycap', text: _('Enter'), y_align: Clutter.ActorAlign.CENTER});
-        this._action = new St.Label({style_class: 'hs-pill-action', y_align: Clutter.ActorAlign.CENTER});
+        this._count = new St.Label({style_class: 'cubby-pill-count', y_align: Clutter.ActorAlign.CENTER});
+        this._keycap = new St.Label({style_class: 'cubby-keycap', text: _('Enter'), y_align: Clutter.ActorAlign.CENTER});
+        this._action = new St.Label({style_class: 'cubby-pill-action', y_align: Clutter.ActorAlign.CENTER});
         this._hint.add_child(this._count);
         this._hint.add_child(this._keycap);
         this._hint.add_child(this._action);

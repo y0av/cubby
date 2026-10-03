@@ -99,7 +99,7 @@ start() {
     local cats=(Development Game Graphics AudioVideo Network Office Education Settings System Utility)
     for ((i = 0; i < napps; i++)); do
         printf '[Desktop Entry]\nType=Application\nName=Synthetic App %03d\nExec=true\nIcon=application-x-executable\nCategories=%s;\n' \
-            "$i" "${cats[$((i % ${#cats[@]}))]}" > "$NEST/data/applications/hs-synth-$i.desktop"
+            "$i" "${cats[$((i % ${#cats[@]}))]}" > "$NEST/data/applications/cubby-synth-$i.desktop"
     done
     # the user's own settings for the extensions under test (read only)
     : > "$NEST/ext-settings.sh"
@@ -161,7 +161,7 @@ EOF
     # let the startup animation and extension enable settle
     sleep 2.5
     on_bus gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
-        --method org.gnome.Shell.Eval 'Main.overview.hide(); Main.messageTray.getSources().forEach(s => s.destroy()); hsTest.move(global.stage.width / 2, global.stage.height - 2); 1' >/dev/null
+        --method org.gnome.Shell.Eval 'Main.overview.hide(); Main.messageTray.getSources().forEach(s => s.destroy()); cubbyTest.move(global.stage.width / 2, global.stage.height - 2); 1' >/dev/null
     sleep 0.6
     echo "nested shell up: ${sizes[*]:-1920x1200}, bus $(bus)"
 }

@@ -10,22 +10,22 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {Frost} from './frost.js';
-import {Tile, drawDashed} from './tile.js';
+import {drawDashed} from './drawing.js';
+import {Tile} from './tile.js';
 import * as L from './layoutEngine.js';
 
-const PAGE_MS = 380;
+export const PAGE_MS = 380;
 const DOTS_GAP = 18;
 
 export const Board = GObject.registerClass({
     Signals: {
-        'page-changed': {param_types: [GObject.TYPE_INT]},
         'layout-changed': {},
     },
 }, class Board extends St.Widget {
     _init(controller, model, settings) {
         super._init({
             name: 'cubbyBoard',
-            style_class: 'hs-board',
+            style_class: 'cubby-board',
             reactive: true,
             clip_to_allocation: true,
             layout_manager: new Clutter.FixedLayout(),
@@ -48,7 +48,7 @@ export const Board = GObject.registerClass({
         this._frostSample = null;
         this.connect('notify::mapped', () => this._syncFrostTracking());
 
-        this._dots = new St.BoxLayout({style_class: 'hs-dots', reactive: true});
+        this._dots = new St.BoxLayout({style_class: 'cubby-dots', reactive: true});
         this.add_child(this._dots);
 
         this._model.connectObject(
@@ -145,7 +145,7 @@ export const Board = GObject.registerClass({
             rects.push({x, y, width: e.get_width(), height: e.get_height(), alpha: tile.opacity / 255});
         }
         const scale = [...this.tiles.values()][0]?.scale_x ?? 1;
-        this._frost.setRects(rects, 32 * scale * (this.grid?.sf ?? 1));
+        this._frost.setRects(rects, 32 * scale * this.grid.sf);
     }
 
     _stored() {
@@ -247,14 +247,14 @@ export const Board = GObject.registerClass({
         // tiles rotate while wiggling; the mask does not, so fade it out
         this._frost?.ease({opacity: on ? 0 : 255, duration: 200});
         if (on)
-            this.add_style_class_name('hs-board-editing');
+            this.add_style_class_name('cubby-board-editing');
         else
-            this.remove_style_class_name('hs-board-editing');
+            this.remove_style_class_name('cubby-board-editing');
         if (on && !this._placeholders) {
             this._placeholders = new St.DrawingArea({reactive: false, opacity: 0});
             this._placeholders.connect('repaint', a => this._drawPlaceholders(a));
             this._strip.insert_child_below(this._placeholders, null);
-            this._ghost = new St.Widget({style_class: 'hs-ghost', reactive: false, visible: false});
+            this._ghost = new St.Widget({style_class: 'cubby-ghost', reactive: false, visible: false});
             this._strip.add_child(this._ghost);
         }
         this._ghost?.hide();
@@ -316,7 +316,7 @@ export const Board = GObject.registerClass({
         const r = this.pixelRect(rect);
         const first = !this._ghost.visible;
         this._ghost.show();
-        this._ghost.set_style_class_name(ok ? 'hs-ghost' : 'hs-ghost hs-ghost-bad');
+        this._ghost.set_style_class_name(ok ? 'cubby-ghost' : 'cubby-ghost cubby-ghost-bad');
         this._strip.set_child_below_sibling(this._ghost, null);
         this._strip.set_child_above_sibling(this._ghost, this._placeholders);
         this._ghost.ease({
@@ -375,7 +375,7 @@ export const Board = GObject.registerClass({
             return;
         for (let i = 0; i < this.nPages; i++) {
             const dot = new St.Button({
-                style_class: 'hs-dot',
+                style_class: 'cubby-dot',
                 can_focus: false,
                 accessible_name: `Page ${i + 1}`,
             });
@@ -398,7 +398,6 @@ export const Board = GObject.registerClass({
 
     setPage(page, animate = true) {
         page = Math.max(0, Math.min(this.nPages - 1, page));
-        const changed = page !== this.page;
         this.page = page;
         this._strip.remove_transition('translation-x');
         this._strip.ease({
@@ -407,18 +406,16 @@ export const Board = GObject.registerClass({
             mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
         });
         this._syncDotState();
-        if (changed)
-            this.emit('page-changed', page);
     }
 
     vfunc_scroll_event(event) {
         const dir = event.get_scroll_direction();
         let step = 0;
-        if (dir === Clutter.ScrollDirection.DOWN || dir === Clutter.ScrollDirection.RIGHT)
+        if (dir === Clutter.ScrollDirection.DOWN || dir === Clutter.ScrollDirection.RIGHT) {
             step = 1;
-        else if (dir === Clutter.ScrollDirection.UP || dir === Clutter.ScrollDirection.LEFT)
+        } else if (dir === Clutter.ScrollDirection.UP || dir === Clutter.ScrollDirection.LEFT) {
             step = -1;
-        else if (dir === Clutter.ScrollDirection.SMOOTH) {
+        } else if (dir === Clutter.ScrollDirection.SMOOTH) {
             const [dx, dy] = event.get_scroll_delta();
             this._scrollAcc = (this._scrollAcc ?? 0) + (Math.abs(dx) > Math.abs(dy) ? dx : dy);
             if (Math.abs(this._scrollAcc) >= 1) {
@@ -435,7 +432,7 @@ export const Board = GObject.registerClass({
     focusables(page = this.page) {
         return L.readingOrder(this.rects)
             .filter(id => this.rects[id].page === page)
-            .flatMap(id => this.tiles.get(id)?.focusables ?? []);
+            .flatMap(id => this.tiles.get(id)?.slots ?? []);
     }
 
     tileFor(actor) {

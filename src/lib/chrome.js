@@ -23,7 +23,7 @@ export class ContextMenu {
     constructor(owner, actions, settings) {
         this._settings = settings;
         this.menu = new PopupMenu.PopupMenu(Main.layoutManager.dummyCursor, 0, St.Side.TOP);
-        this.menu.actor.add_style_class_name('hs-menu');
+        this.menu.actor.add_style_class_name('cubby-menu');
         this._manager = new PopupMenu.PopupMenuManager(owner);
         this._manager.addMenu(this.menu);
         Main.layoutManager.uiGroup.add_child(this.menu.actor);
@@ -31,7 +31,7 @@ export class ContextMenu {
 
         const edit = this.menu.addAction(_('Edit layout'), () => actions.edit());
         edit.add_child(new St.Label({
-            style_class: 'hs-menu-accel',
+            style_class: 'cubby-menu-accel',
             text: _('Ctrl E'),
             x_expand: true,
             x_align: Clutter.ActorAlign.END,
@@ -54,8 +54,8 @@ export class ContextMenu {
     }
 
     setDark(dark) {
-        this.menu.actor.remove_style_class_name(dark ? 'hs-light' : 'hs-dark');
-        this.menu.actor.add_style_class_name(dark ? 'hs-dark' : 'hs-light');
+        this.menu.actor.remove_style_class_name(dark ? 'cubby-light' : 'cubby-dark');
+        this.menu.actor.add_style_class_name(dark ? 'cubby-dark' : 'cubby-light');
     }
 
     /** Opens at stage coordinates. */
@@ -81,19 +81,19 @@ export class ContextMenu {
 export const EditBar = GObject.registerClass(
 class EditBar extends St.BoxLayout {
     _init(onDone) {
-        super._init({style_class: 'hs-editbar', reactive: true, visible: false});
+        super._init({style_class: 'cubby-editbar', reactive: true, visible: false});
         this.add_child(new St.Label({
-            style_class: 'hs-editbar-title',
+            style_class: 'cubby-editbar-title',
             text: _('Editing layout'),
             y_align: Clutter.ActorAlign.CENTER,
         }));
         this.add_child(new St.Label({
-            style_class: 'hs-editbar-text',
+            style_class: 'cubby-editbar-text',
             text: _('drag a folder to move it · drag the round corner handle to resize'),
             y_align: Clutter.ActorAlign.CENTER,
         }));
         this.done = new St.Button({
-            style_class: 'hs-done',
+            style_class: 'cubby-done',
             label: _('Done'),
             can_focus: true,
             y_align: Clutter.ActorAlign.CENTER,
@@ -112,11 +112,11 @@ class EditBar extends St.BoxLayout {
 export const Coach = GObject.registerClass(
 class Coach extends St.BoxLayout {
     _init(onDismiss) {
-        super._init({style_class: 'hs-coach', reactive: true, visible: false});
-        const label = new St.Label({style_class: 'hs-coach-text', y_align: Clutter.ActorAlign.CENTER});
+        super._init({style_class: 'cubby-coach', reactive: true, visible: false});
+        const label = new St.Label({style_class: 'cubby-coach-text', y_align: Clutter.ActorAlign.CENTER});
         label.clutter_text.set_markup(_('<b>Tip:</b> right-click or long-press a folder to resize and arrange'));
         this.add_child(label);
-        const ok = new St.Button({style_class: 'hs-coach-ok', label: _('Got it'), can_focus: true});
+        const ok = new St.Button({style_class: 'cubby-coach-ok', label: _('Got it'), can_focus: true});
         ok.connect('clicked', () => onDismiss());
         this.add_child(ok);
     }

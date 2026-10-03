@@ -54,9 +54,9 @@ for (const clock of [false, true]) {
 {
     const g = L.computeGrid({x: 0, y: 48, width: 1920, height: 1152}, {width: 1920, height: 1200});
     eq([g.cols, g.rows, g.U, g.V, g.GX, g.GY], [9, 3, 156, 150, 34, 64], 'reference grid is 9x3 at U=156');
-    eq([g.boardX, g.boardY, g.pillY], [122, 340, 200], 'reference positions match the sketch (no clock)');
+    eq([g.boardX, g.boardY, g.pillY], [122, 340, 200], 'reference positions (no clock)');
     const c = L.computeGrid({x: 0, y: 48, width: 1920, height: 1152}, {width: 1920, height: 1200}, {clock: true});
-    eq([c.cols, c.rows, c.boardY, c.pillY], [9, 3, 404, 132], 'reference positions match the sketch (clock)');
+    eq([c.cols, c.rows, c.boardY, c.pillY], [9, 3, 404, 132], 'reference positions (clock)');
 }
 
 // ---- tile contents and +N ----
@@ -66,7 +66,7 @@ eq(L.tileContent(7, 3, 2), {big: 5, mini: 2, badge: 0}, '3x2 with 7 apps: no bad
 eq(L.tileContent(4, 1, 1), {big: 0, mini: 4, badge: 0}, '1x1 with 4 apps');
 eq(L.tileContent(9, 1, 1), {big: 0, mini: 4, badge: 5}, '1x1 with 9 apps');
 eq(L.tileContent(3, 1, 1), {big: 0, mini: 3, badge: 0}, '1x1 with 3 apps');
-eq(L.tileContent(11, 1, 2), {big: 1, mini: 4, badge: 6}, '1x2 with 11 apps (Utilities in the sketch: +6)');
+eq(L.tileContent(11, 1, 2), {big: 1, mini: 4, badge: 6}, '1x2 with 11 apps: +6');
 eq(L.tileContent(2, 2, 1), {big: 2, mini: 0, badge: 0}, '2x1 with 2 apps');
 eq(L.tileContent(0, 2, 2), {big: 0, mini: 0, badge: 0}, 'empty');
 
@@ -103,7 +103,7 @@ function folderSet(counts) {
     return counts.map((c, i) => ({id: `g${i}`, count: c}));
 }
 const sets = {
-    'sketch (11 folders)': [10, 6, 11, 9, 4, 3, 10, 7, 6, 9, 4],
+    'eleven folders': [10, 6, 11, 9, 4, 3, 10, 7, 6, 9, 4],
     'author (10 folders)': [11, 11, 16, 6, 6, 2, 5, 3, 20, 14],
     'one big folder': [40],
     'three folders': [12, 5, 2],
@@ -132,13 +132,13 @@ for (const [name, counts] of Object.entries(sets)) {
     }
 }
 {
-    const t = L.generateLayout(folderSet(sets['sketch (11 folders)']), 9, 3);
+    const t = L.generateLayout(folderSet(sets['eleven folders']), 9, 3);
     eq([t.g0.w, t.g0.h, t.g1.w, t.g1.h], [3, 2, 2, 2], 'top two folders get 3x2 and 2x2');
 }
 
 // ---- reflow keeps order, and reconcile never drops ----
 {
-    const t = L.generateLayout(folderSet(sets['sketch (11 folders)']), 9, 3);
+    const t = L.generateLayout(folderSet(sets['eleven folders']), 9, 3);
     const order = L.readingOrder(t);
     for (const [cols, rows] of [[8, 3], [12, 4], [6, 2], [4, 3]]) {
         const r = L.reflow(t, cols, rows);
@@ -170,7 +170,7 @@ for (const [name, counts] of Object.entries(sets)) {
 
 // ---- resolve / store ----
 {
-    const folders = folderSet(sets['sketch (11 folders)']);
+    const folders = folderSet(sets['eleven folders']);
     const first = L.resolveLayout({}, folders, 9, 3);
     eq(first.source, 'generated', 'first run generates');
     let stored = L.storeLayout({}, 9, 3, first.tiles, {generated: true});

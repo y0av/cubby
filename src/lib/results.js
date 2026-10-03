@@ -6,14 +6,13 @@
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
-import Graphene from 'gi://Graphene';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {Pips, addPressFeedback, runningText} from './tile.js';
+import {AppIcon, accessibleName, addPressFeedback} from './appIcon.js';
 
 const APP_COLS = 5;
 const RESULT_ICON = 56;
@@ -85,12 +84,11 @@ const AppResult = GObject.registerClass(
 class AppResult extends St.Button {
     _init(app, caption, live, focusApp) {
         super._init({
-            style_class: 'hs-result hs-focusable',
+            style_class: 'cubby-result cubby-focusable',
             can_focus: false,
             reactive: true,
             track_hover: true,
             x_expand: true,
-            pivot_point: new Graphene.Point({x: 0.5, y: 0.5}),
         });
         this.kind = 'app';
         this.app = app;
@@ -98,35 +96,24 @@ class AppResult extends St.Button {
             orientation: Clutter.Orientation.VERTICAL,
             x_align: Clutter.ActorAlign.CENTER,
             y_expand: true,
-            style_class: 'hs-result-box',
+            style_class: 'cubby-result-box',
         });
-        const iconBox = new St.Widget({
-            layout_manager: new Clutter.BinLayout(),
-            width: RESULT_ICON,
-            height: RESULT_ICON,
-            x_align: Clutter.ActorAlign.CENTER,
-        });
-        iconBox.add_child(new St.Icon({
-            style_class: 'hs-icon',
-            gicon: app.get_icon(),
-            fallback_icon_name: 'application-x-executable',
-            icon_size: RESULT_ICON,
-        }));
-        this._pips = new Pips();
-        this._pips.translation_y = 8;
-        this._pips.update(app, focusApp === app);
-        iconBox.add_child(this._pips);
-        box.add_child(iconBox);
+        this.appIcon = new AppIcon(app, RESULT_ICON);
+        box.add_child(this.appIcon);
         const texts = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'hs-result-texts',
+            style_class: 'cubby-result-texts',
             x_align: Clutter.ActorAlign.CENTER,
         });
         box.add_child(texts);
-        const name = new St.Label({style_class: 'hs-result-name', text: app.get_name(), x_align: Clutter.ActorAlign.CENTER});
+        const name = new St.Label({
+            style_class: 'cubby-result-name',
+            text: app.get_name(),
+            x_align: Clutter.ActorAlign.CENTER,
+        });
         name.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         texts.add_child(name);
-        this._cap = new St.Label({style_class: 'hs-result-caption', x_align: Clutter.ActorAlign.CENTER});
+        this._cap = new St.Label({style_class: 'cubby-result-caption', x_align: Clutter.ActorAlign.CENTER});
         this._cap.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         texts.add_child(this._cap);
         this.set_child(box);
@@ -137,12 +124,11 @@ class AppResult extends St.Button {
     setCaption(caption, live, focusApp) {
         this._cap.text = caption;
         if (live)
-            this._cap.add_style_class_name('hs-live');
+            this._cap.add_style_class_name('cubby-live');
         else
-            this._cap.remove_style_class_name('hs-live');
-        this._pips.update(this.app, focusApp === this.app);
-        const run = runningText(this.app);
-        this.accessible_name = [this.app.get_name(), caption, run].filter(Boolean).join(', ');
+            this._cap.remove_style_class_name('cubby-live');
+        this.appIcon.updateRunning(focusApp);
+        this.accessible_name = accessibleName(this.app, caption);
     }
 });
 
@@ -150,15 +136,14 @@ const OtherResult = GObject.registerClass(
 class OtherResult extends St.Button {
     _init(result) {
         super._init({
-            style_class: 'hs-other hs-focusable',
+            style_class: 'cubby-other cubby-focusable',
             can_focus: false,
             reactive: true,
             track_hover: true,
-            pivot_point: new Graphene.Point({x: 0.5, y: 0.5}),
         });
         this.kind = 'other';
         this.result = result;
-        const box = new St.BoxLayout({style_class: 'hs-other-box', y_align: Clutter.ActorAlign.CENTER});
+        const box = new St.BoxLayout({style_class: 'cubby-other-box', y_align: Clutter.ActorAlign.CENTER});
         let icon = null;
         try {
             icon = result.iconName
@@ -171,12 +156,12 @@ class OtherResult extends St.Button {
             icon.y_align = Clutter.ActorAlign.CENTER;
             box.add_child(icon);
         }
-        const name = new St.Label({style_class: 'hs-other-name', text: result.name, y_align: Clutter.ActorAlign.CENTER});
+        const name = new St.Label({style_class: 'cubby-other-name', text: result.name, y_align: Clutter.ActorAlign.CENTER});
         name.clutter_text.ellipsize = Pango.EllipsizeMode.MIDDLE;
         box.add_child(name);
         if (result.source) {
             box.add_child(new St.Label({
-                style_class: 'hs-other-source',
+                style_class: 'cubby-other-source',
                 text: result.source,
                 y_align: Clutter.ActorAlign.CENTER,
             }));
@@ -191,7 +176,7 @@ export const ResultsPanel = GObject.registerClass(
 class ResultsPanel extends St.BoxLayout {
     _init(controller) {
         super._init({
-            style_class: 'hs-results',
+            style_class: 'cubby-results',
             orientation: Clutter.Orientation.VERTICAL,
             reactive: true,
             visible: false,
@@ -200,14 +185,14 @@ class ResultsPanel extends St.BoxLayout {
         this._controller = controller;
         this.items = [];
 
-        this._appsLabel = new St.Label({style_class: 'hs-sec', text: _('Apps').toUpperCase()});
+        this._appsLabel = new St.Label({style_class: 'cubby-sec', text: _('Apps').toUpperCase()});
         this._appsGrid = new St.Widget({layout_manager: new Clutter.FixedLayout()});
-        this._otherLabel = new St.Label({style_class: 'hs-sec', text: _('Settings and files').toUpperCase()});
+        this._otherLabel = new St.Label({style_class: 'cubby-sec', text: _('Settings and files').toUpperCase()});
         this._otherFlow = new St.Widget({
-            style_class: 'hs-other-flow',
+            style_class: 'cubby-other-flow',
             layout_manager: new WrapLayout(8, 8),
         });
-        this._none = new St.Label({style_class: 'hs-none'});
+        this._none = new St.Label({style_class: 'cubby-none'});
         this._none.clutter_text.line_wrap = true;
         [this._appsLabel, this._appsGrid, this._otherLabel, this._otherFlow, this._none]
             .forEach(a => this.add_child(a));
@@ -255,9 +240,8 @@ class ResultsPanel extends St.BoxLayout {
             if (item) {
                 item.setCaption(a.caption, a.live, focusApp);
                 item.width = cellW;
-                if (item.x !== x || item.y !== y) {
+                if (item.x !== x || item.y !== y)
                     item.ease({x, y, duration: animate ? 180 : 0, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-                }
             } else {
                 item = new AppResult(a.app, a.caption, a.live, focusApp);
                 item.connect('clicked', () => this._controller.activateResult(item));

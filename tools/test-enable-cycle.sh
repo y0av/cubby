@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# M1 check: enable/disable the extension 20 times in the nested shell and
+# Enables and disables the extension 20 times in the nested shell and
 # verify the shell is restored exactly (methods, keybinding, actors) with no
 # errors logged. Needs a running nested shell (tools/nest.sh start).
 set -euo pipefail
@@ -13,7 +13,7 @@ sleep 0.5
 ev "
 const op = Object.getPrototypeOf(Main.overview);
 const cp = Object.getPrototypeOf(Main.overview._overview.controls);
-globalThis._hsBase = {show: op.show, hide: op.hide, toggle: op.toggle,
+globalThis._cubbyBase = {show: op.show, hide: op.hide, toggle: op.toggle,
   onT: cp._onShowAppsButtonToggled, own: Object.keys(Main.overview).length,
   kids: Main.layoutManager.uiGroup.get_n_children(), modal: Main.modalCount};
 1" >/dev/null
@@ -30,7 +30,7 @@ sleep 0.5
 ev "
 const op = Object.getPrototypeOf(Main.overview);
 const cp = Object.getPrototypeOf(Main.overview._overview.controls);
-const b = globalThis._hsBase;
+const b = globalThis._cubbyBase;
 const same = [op.show === b.show, op.hide === b.hide, op.toggle === b.toggle,
   cp._onShowAppsButtonToggled === b.onT,
   Object.keys(Main.overview).length === b.own,
@@ -40,7 +40,7 @@ const same = [op.show === b.show, op.hide === b.hide, op.toggle === b.toggle,
 JSON.stringify(same)"
 
 # stock behaviour is back: Super+A opens the stock app grid
-ev "hsTest.key('a', ['Super_L']); 1" >/dev/null
+ev "cubbyTest.key('a', ['Super_L']); 1" >/dev/null
 sleep 0.8
 ev "JSON.stringify([Main.overview.visible, Main.overview.dash.showAppsButton.checked])"
 ev "Main.overview.hide(); 1" >/dev/null

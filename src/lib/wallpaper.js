@@ -12,11 +12,11 @@ import Gio from 'gi://Gio';
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
 const DECODE_W = 192;
-export const SAMPLE_W = 96;
-export const DEFAULT_LUMINANCE = 0.3;
+const SAMPLE_W = 96;
+const DEFAULT_LUMINANCE = 0.3;
 
-/** Mean of 0.2126R + 0.7152G + 0.0722B over pixels, 0..1 (the sketch's adaptScrim). */
-export function meanLuminance(pixbuf) {
+/** Mean of 0.2126R + 0.7152G + 0.0722B over the pixels, 0..1. */
+function meanLuminance(pixbuf) {
     const px = pixbuf.get_pixels();
     const n = pixbuf.get_n_channels(), stride = pixbuf.get_rowstride();
     const w = pixbuf.get_width(), h = pixbuf.get_height();

@@ -5,10 +5,10 @@
 // resize, or use the keyboard (arrows move, Shift+arrows resize). Every
 // change is snapped to the grid, checked for overlap, and saved.
 
-import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
+import {PAGE_MS} from './board.js';
 import {canPlace, MAX_TILE_W, MAX_TILE_H} from './layoutEngine.js';
 
 const EDGE_PX = 48;
@@ -186,7 +186,7 @@ export class EditMode {
                 return GLib.SOURCE_REMOVE;
             b.setPage(b.page + dir);
             // keep the tile under the pointer once the strip has moved
-            this._followId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 420, () => {
+            this._followId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PAGE_MS + 40, () => {
                 this._followId = 0;
                 if (this._drag)
                     this.motion(...this._drag.last);
@@ -211,34 +211,31 @@ export class EditMode {
      * Arrows move the focused tile one cell (skipping over tiles in the
      * way, onto the next page past the edge); Shift+arrows resize it.
      *
-     * @returns {boolean} whether the key was used
+     * @param {Tile} tile
+     * @param {number[]} dir - [dx, dy]
+     * @param {boolean} resize
      */
-    key(tile, sym, shift) {
-        const dir = {
-            [Clutter.KEY_Left]: [-1, 0], [Clutter.KEY_Right]: [1, 0],
-            [Clutter.KEY_Up]: [0, -1], [Clutter.KEY_Down]: [0, 1],
-        }[sym];
-        if (!dir || !tile)
-            return false;
+    key(tile, dir, resize) {
+        if (!tile)
+            return;
         const b = this._board, g = b.grid, id = tile.folder.id;
         const r = b.rects[id];
-        if (shift) {
+        if (resize) {
             const cand = {...r, w: r.w + dir[0], h: r.h + dir[1]};
-            if (cand.w < 1 || cand.h < 1 || cand.w > MAX_TILE_W || cand.h > MAX_TILE_H)
-                return true;
-            if (this._fits(id, cand))
+            const inLimits = cand.w >= 1 && cand.h >= 1 && cand.w <= MAX_TILE_W && cand.h <= MAX_TILE_H;
+            if (inLimits && this._fits(id, cand))
                 b.moveTile(id, cand, {animate: true, save: true});
-            return true;
+            return;
         }
         for (let step = 1; step <= Math.max(g.cols, g.rows) * 2; step++) {
             let cand = {...r, x: r.x + dir[0] * step, y: r.y + dir[1] * step};
             if (cand.y < 0 || cand.y + cand.h > g.rows)
-                break;
+                return;
             if (cand.x < 0 || cand.x + cand.w > g.cols) {
                 // past the side edge: continue on the neighbouring page
                 const page = r.page + dir[0];
                 if (dir[1] !== 0 || page < 0 || page >= b.nPages)
-                    break;
+                    return;
                 cand = {...r, page, x: dir[0] > 0 ? 0 : g.cols - r.w};
                 for (let k = 0; k < g.cols && !this._fits(id, cand); k++)
                     cand = {...cand, x: cand.x + (dir[0] > 0 ? 1 : -1)};
@@ -246,13 +243,12 @@ export class EditMode {
                     b.moveTile(id, cand, {animate: true, save: true});
                     b.setPage(page);
                 }
-                return true;
+                return;
             }
             if (this._fits(id, cand)) {
                 b.moveTile(id, cand, {animate: true, save: true});
-                return true;
+                return;
             }
         }
-        return true;
     }
 }

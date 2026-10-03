@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 y0av
 
 // Development only: lets tools/nest.sh drive the nested shell over D-Bus.
-// Turns on unsafe mode (Eval, Screenshot) and exposes globalThis.hsTest with
+// Turns on unsafe mode (Eval, Screenshot) and exposes globalThis.cubbyTest with
 // synthetic input and frame timing helpers.
 
 import Clutter from 'gi://Clutter';
@@ -154,12 +154,12 @@ class TestApi {
 export default class TestKit extends Extension {
     enable() {
         global.context.unsafe_mode = true;
-        globalThis.hsTest = new TestApi();
+        globalThis.cubbyTest = new TestApi();
     }
 
     disable() {
-        globalThis.hsTest?.destroy();
-        delete globalThis.hsTest;
+        globalThis.cubbyTest?.destroy();
+        delete globalThis.cubbyTest;
         global.context.unsafe_mode = false;
     }
 }

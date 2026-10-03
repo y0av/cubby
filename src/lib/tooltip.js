@@ -14,13 +14,13 @@ export const Tooltip = GObject.registerClass(
 class Tooltip extends St.BoxLayout {
     _init() {
         super._init({
-            style_class: 'hs-tooltip',
+            style_class: 'cubby-tooltip',
             reactive: false,
             visible: false,
             opacity: 0,
         });
-        this._main = new St.Label({style_class: 'hs-tooltip-main', y_align: Clutter.ActorAlign.CENTER});
-        this._sub = new St.Label({style_class: 'hs-tooltip-sub', y_align: Clutter.ActorAlign.CENTER});
+        this._main = new St.Label({style_class: 'cubby-tooltip-main', y_align: Clutter.ActorAlign.CENTER});
+        this._sub = new St.Label({style_class: 'cubby-tooltip-sub', y_align: Clutter.ActorAlign.CENTER});
         this.add_child(this._main);
         this.add_child(this._sub);
         this.target = null;

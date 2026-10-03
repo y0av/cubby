@@ -2,8 +2,8 @@
 """Screenshots and the demo GIF for the README, from the nested shell.
 
 Uses generic data (GNOME's default folders plus category groups over the
-system's apps, no personal folders), the sketch wallpapers rendered to PNG,
-and the blue accent. Animations are captured in slow motion through St's
+system's apps, no personal folders), two test wallpapers and the blue
+accent. Animations are captured in slow motion through St's
 slow-down factor and retimed in the GIF.
 
 Usage: tools/readme-media.py WALLPAPER_DIR [OUTDIR]
@@ -66,7 +66,7 @@ def start(wall, light=False):
     if light:
         args.append('--light')
     nest(*args)
-    js("const s = hsTest.layer()._settings; s.set_boolean('show-clock', true); s.set_boolean('tip-dismissed', true); 1")
+    js("const s = cubbyTest.layer()._settings; s.set_boolean('show-clock', true); s.set_boolean('tip-dismissed', true); 1")
     # one window to show the dimming
     js("imports.gi.Shell.AppSystem.get_default().lookup_app('org.gnome.TextEditor.desktop')?.activate(); 1")
     time.sleep(3)
@@ -74,34 +74,34 @@ def start(wall, light=False):
 
 def stills():
     start('w0.png')
-    js('hsTest.layer().open(); 1')
+    js('cubbyTest.layer().open(); 1')
     time.sleep(1.5)
     shot(f'{OUT}/dark.png')
-    js("hsTest.type('te'); 1")
+    js("cubbyTest.type('te'); 1")
     time.sleep(1.5)
     shot(f'{OUT}/search.png')
-    js("hsTest.key('Escape'); 1")
+    js("cubbyTest.key('Escape'); 1")
     time.sleep(0.6)
-    js("const l = hsTest.layer(); const t = [...l.board.tiles.values()].find(t => t.slots.some(s => s.kind === 'more') && t.folder.apps.length > 8); l.openFolder(t.folder.id, t.slots.at(-1)); 1")
+    js("const l = cubbyTest.layer(); const t = [...l.board.tiles.values()].find(t => t.slots.some(s => s.kind === 'more') && t.folder.apps.length > 8); l.openFolder(t.folder.id, t.slots.at(-1)); 1")
     time.sleep(1.2)
     shot(f'{OUT}/folder.png')
-    js("hsTest.key('Escape'); 1")
+    js("cubbyTest.key('Escape'); 1")
     time.sleep(0.8)
-    js("hsTest.key('e', ['Control_L']); 1")
+    js("cubbyTest.key('e', ['Control_L']); 1")
     time.sleep(0.8)
-    js("const t = [...hsTest.layer().board.tiles.values()][1]; const [x, y] = t.get_transformed_position(); hsTest.move(x + 60, y + 60); 1")
+    js("const t = [...cubbyTest.layer().board.tiles.values()][1]; const [x, y] = t.get_transformed_position(); cubbyTest.move(x + 60, y + 60); 1")
     time.sleep(0.8)
     shot(f'{OUT}/edit.png')
-    js("hsTest.key('Escape'); 1")
+    js("cubbyTest.key('Escape'); 1")
     time.sleep(0.5)
-    js("const t = [...hsTest.layer().board.tiles.values()][2]; const [x, y] = t.get_transformed_position(); hsTest.click(x + 220, y + 60, 3); 1")
+    js("const t = [...cubbyTest.layer().board.tiles.values()][2]; const [x, y] = t.get_transformed_position(); cubbyTest.click(x + 220, y + 60, 3); 1")
     time.sleep(0.6)
     shot(f'{OUT}/menu.png')
-    js("hsTest.key('Escape'); 1")
+    js("cubbyTest.key('Escape'); 1")
     nest('stop')
 
     start('w1.png', light=True)
-    js('hsTest.layer().open(); 1')
+    js('cubbyTest.layer().open(); 1')
     time.sleep(1.5)
     shot(f'{OUT}/light.png')
     nest('stop')
@@ -168,7 +168,7 @@ class Recorder:
 def gif():
     start('w0.png')
     r = Recorder()
-    js("hsTest.move(960, 1190); 1")
+    js("cubbyTest.move(960, 1190); 1")
     r.grab(0.1)
     r.hold(0.6)
 
@@ -178,20 +178,20 @@ def gif():
         js(code)
         r.grab(seconds * slow)
 
-    step('hsTest.layer().open(); 1', 1.3, SLOW)                       # open wave
+    step('cubbyTest.layer().open(); 1', 1.3, SLOW)                       # open wave
     r.hold(0.8)
-    step("hsTest.type('te'); 1", 0.5, SLOW)                            # results pop in
+    step("cubbyTest.type('te'); 1", 0.5, SLOW)                            # results pop in
     r.hold(1.4)
-    step("hsTest.key('Escape'); 1", 0.35, SLOW)
-    step("const l = hsTest.layer(); const t = [...l.board.tiles.values()].find(t => t.slots.some(s => s.kind === 'more') && t.folder.apps.length > 8); const s = t.slots.at(-1); const [x, y] = s.get_transformed_position(); hsTest.click(x + s.width / 2, y + s.height / 2); 1", 0.6, SLOW)   # folder grows
+    step("cubbyTest.key('Escape'); 1", 0.35, SLOW)
+    step("const l = cubbyTest.layer(); const t = [...l.board.tiles.values()].find(t => t.slots.some(s => s.kind === 'more') && t.folder.apps.length > 8); const s = t.slots.at(-1); const [x, y] = s.get_transformed_position(); cubbyTest.click(x + s.width / 2, y + s.height / 2); 1", 0.6, SLOW)   # folder grows
     r.hold(1.2)
-    step("hsTest.key('Escape'); 1", 0.5, SLOW)
-    step("hsTest.layer()._theme._iface.set_string('color-scheme', 'default'); 1", 0.3, 1)
+    step("cubbyTest.key('Escape'); 1", 0.5, SLOW)
+    step("cubbyTest.layer()._theme._iface.set_string('color-scheme', 'default'); 1", 0.3, 1)
     r.hold(1.0)
-    step("hsTest.key('e', ['Control_L']); 1", 1.4, 6)                  # wiggle
-    step("hsTest.key('Escape'); hsTest.layer()._theme._iface.set_string('color-scheme', 'prefer-dark'); 1", 0.3, 1)
+    step("cubbyTest.key('e', ['Control_L']); 1", 1.4, 6)                  # wiggle
+    step("cubbyTest.key('Escape'); cubbyTest.layer()._theme._iface.set_string('color-scheme', 'prefer-dark'); 1", 0.3, 1)
     r.hold(0.4)
-    step('hsTest.layer().close(); 1', 0.5, SLOW)                       # close wave
+    step('cubbyTest.layer().close(); 1', 0.5, SLOW)                       # close wave
     r.hold(0.6)
     r.set_slow(1)
     r.save(f'{OUT}/demo.gif')

@@ -3,3 +3,4 @@ dist/
 schemas/gschemas.compiled
 __pycache__/
 shots/
+node_modules/

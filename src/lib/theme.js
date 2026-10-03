@@ -9,7 +9,7 @@ import Gio from 'gi://Gio';
 
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
-export const ACCENTS = {
+const ACCENTS = {
     blue: '#3584e4',
     teal: '#2190a4',
     green: '#3a944a',
@@ -35,6 +35,12 @@ export function parseHex(hex) {
 export function rgba(hex, alpha) {
     const [r, g, b] = parseHex(hex) ?? [0, 0, 0];
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** The same colour as Cairo wants it: [r, g, b, a] in 0..1. */
+export function cairoRgba(hex, alpha = 1) {
+    const [r, g, b] = parseHex(hex) ?? [0, 0, 0];
+    return [r / 255, g / 255, b / 255, alpha];
 }
 
 /** WCAG relative luminance of an [r, g, b] colour (0-255). */

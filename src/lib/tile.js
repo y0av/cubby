@@ -9,174 +9,39 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Graphene from 'gi://Graphene';
 import Pango from 'gi://Pango';
-import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {AppIcon, accessibleName, addPressFeedback, runningText} from './appIcon.js';
+import {drawDashed} from './drawing.js';
 import {tileContent} from './layoutEngine.js';
+import {cairoRgba} from './theme.js';
 
 const SLOT_MARGIN = 8;
 const NAME_GAP = 11;
 const CHIP_GAP = 8;
 const CHIP_H = 28;
-const MAX_PIPS = 3;
+const CORNER_RADIUS = 32;
 const OUTLINE_OFFSET = 5;
 const WIGGLE_DEG = 0.35;
 const WIGGLE_MS = 1100;
 const MOVE_MS = 380;
 const DECOR_FADE_MS = 180;
-const PRESS_SCALE = 0.95;
-
-function roundedRect(cr, x, y, w, h, r) {
-    r = Math.min(r, w / 2, h / 2);
-    cr.newSubPath();
-    cr.arc(x + w - r, y + r, r, -Math.PI / 2, 0);
-    cr.arc(x + w - r, y + h - r, r, 0, Math.PI / 2);
-    cr.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
-    cr.arc(x + r, y + r, r, Math.PI, 1.5 * Math.PI);
-    cr.closePath();
-}
-
-/** Strokes dashed rounded rects; `rects` are {x, y, width, height}. */
-export function drawDashed(area, rects, {rgba, fill = null, radius = 32, width = 1.5, dash = [6, 4]}) {
-    const cr = area.get_context();
-    cr.setLineWidth(width);
-    cr.setDash(dash, 0);
-    for (const r of rects) {
-        roundedRect(cr, r.x + width / 2, r.y + width / 2, r.width - width, r.height - width, radius);
-        if (fill) {
-            cr.setSourceRGBA(...fill);
-            cr.fillPreserve();
-        }
-        cr.setSourceRGBA(...rgba);
-        cr.stroke();
-    }
-    cr.$dispose();
-}
-
-export function hexRgba(hex, a) {
-    const n = parseInt(hex.replace('#', ''), 16);
-    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, a];
-}
-
-/** Shrinks a button a little while it is held down. */
-export function addPressFeedback(button) {
-    button.set_pivot_point(0.5, 0.5);
-    button.connect('notify::pressed', () => {
-        const scale = button.pressed ? PRESS_SCALE : 1;
-        button.ease({
-            scale_x: scale,
-            scale_y: scale,
-            duration: button.pressed ? 90 : 180,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        });
-    });
-}
-
-/** Accessible description of an app's running state. */
-export function runningText(app) {
-    if (app.state !== Shell.AppState.RUNNING)
-        return '';
-    const n = app.get_n_windows();
-    return ngettext('running, %d window', 'running, %d windows', n).format(n);
-}
-
-/**
- * Bar of window pips under an icon: one per window up to three, the focused
- * app's first pip wide. Neutral colour; the accent means "selected" only.
- */
-export const Pips = GObject.registerClass(
-class Pips extends St.BoxLayout {
-    _init(small = false) {
-        super._init({
-            style_class: small ? 'hs-pips hs-pips-small' : 'hs-pips',
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.END,
-            x_expand: true,
-            y_expand: true,
-        });
-        this._small = small;
-    }
-
-    update(app, focused) {
-        const n = app.state === Shell.AppState.RUNNING
-            ? Math.max(1, Math.min(MAX_PIPS, app.get_n_windows())) : 0;
-        const count = this._small ? Math.min(n, 1) : n;
-        while (this.get_n_children() > count)
-            this.get_last_child().destroy();
-        while (this.get_n_children() < count)
-            this.add_child(new St.Widget({style_class: 'hs-pip'}));
-        this.get_children().forEach((p, i) => {
-            if (i === 0 && focused && !this._small)
-                p.add_style_class_name('hs-pip-focused');
-            else
-                p.remove_style_class_name('hs-pip-focused');
-        });
-        this.visible = count > 0;
-    }
-});
-
-/** Icon with its pips (and an optional "New" marker). */
-const AppIconBox = GObject.registerClass(
-class AppIconBox extends St.Widget {
-    _init(app, size, {small = false, isNew = false} = {}) {
-        super._init({
-            layout_manager: new Clutter.BinLayout(),
-            x_align: Clutter.ActorAlign.CENTER,
-            width: size,
-            height: size,
-        });
-        this.app = app;
-        this.icon = new St.Icon({
-            style_class: small ? 'hs-mini-icon' : 'hs-icon',
-            gicon: app.get_icon(),
-            fallback_icon_name: 'application-x-executable',
-            icon_size: size,
-        });
-        this.add_child(this.icon);
-        this.pips = new Pips(small);
-        this.pips.translation_y = small ? 6 : 8;
-        this.add_child(this.pips);
-        if (isNew && small) {
-            this.add_child(new St.Widget({
-                style_class: 'hs-new-dot',
-                x_align: Clutter.ActorAlign.END,
-                y_align: Clutter.ActorAlign.START,
-                x_expand: true,
-                y_expand: true,
-                translation_x: 3,
-                translation_y: -3,
-            }));
-        } else if (isNew) {
-            this.add_child(new St.Label({
-                style_class: 'hs-new',
-                text: _('New'),
-                x_align: Clutter.ActorAlign.END,
-                y_align: Clutter.ActorAlign.START,
-                x_expand: true,
-                y_expand: true,
-                translation_x: 12,
-                translation_y: -6,
-            }));
-        }
-    }
-});
 
 /** A big-icon slot: icon, pips, name. */
 const AppSlot = GObject.registerClass(
 class AppSlot extends St.Button {
-    _init(tile, app, size, names, labelWidth, isNew) {
+    _init(tile, app, {size, names, labelWidth, isNew}) {
         super._init({
-            style_class: 'hs-slot hs-focusable',
+            style_class: 'cubby-slot cubby-focusable',
             can_focus: true,
             reactive: true,
             track_hover: true,
             button_mask: St.ButtonMask.ONE,
         });
-        this.tile = tile;
-        this.app = app;
         this.kind = 'app';
+        this.app = app;
         const box = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             x_align: Clutter.ActorAlign.CENTER,
@@ -185,33 +50,31 @@ class AppSlot extends St.Button {
             y_expand: true,
             style: `spacing: ${NAME_GAP}px;`,
         });
-        this.iconBox = new AppIconBox(app, size, {isNew});
-        box.add_child(this.iconBox);
+        this.appIcon = new AppIcon(app, size, {isNew});
+        box.add_child(this.appIcon);
         if (names) {
             const label = new St.Label({
-                style_class: 'hs-name',
+                style_class: 'cubby-name',
                 text: app.get_name(),
                 x_align: Clutter.ActorAlign.CENTER,
+                style: `max-width: ${labelWidth}px;`,
             });
             label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-            label.style = `max-width: ${labelWidth}px;`;
             box.add_child(label);
         }
         this.set_child(box);
         addPressFeedback(this);
         this.connect('clicked', () => tile.controller.activateApp(app, this));
-        this.connect('notify::hover', () => tile.controller.onSlotHover?.(this));
+        this.connect('notify::hover', () => tile.controller.onSlotHover(this));
     }
 
     get tooltipText() {
-        const run = runningText(this.app);
-        return run ? [this.app.get_name(), run] : [this.app.get_name(), ''];
+        return [this.app.get_name(), runningText(this.app)];
     }
 
     updateRunning(focusApp) {
-        this.iconBox.pips.update(this.app, focusApp === this.app);
-        const run = runningText(this.app);
-        this.accessible_name = run ? `${this.app.get_name()}, ${run}` : this.app.get_name();
+        this.appIcon.updateRunning(focusApp);
+        this.accessible_name = accessibleName(this.app);
     }
 });
 
@@ -221,22 +84,25 @@ class AppSlot extends St.Button {
  */
 const MoreSlot = GObject.registerClass(
 class MoreSlot extends St.Button {
-    _init(tile, apps, badge, miniSize, single) {
+    _init(tile, apps, {badge, miniSize, single}) {
         super._init({
-            style_class: `hs-slot hs-more hs-focusable${single ? ' hs-more-single' : ''}`,
+            style_class: 'cubby-slot cubby-focusable',
             can_focus: true,
             reactive: true,
             track_hover: true,
             button_mask: St.ButtonMask.ONE,
         });
-        this.tile = tile;
         this.kind = 'more';
+        this.tile = tile;
         this.apps = apps;
+        this._badge = badge;
+
+        // a 1x1 tile is all preview, so it has no inset and more room
         const gap = single ? 12 : 6;
         const pad = single ? 0 : 8;
         const inner = 2 * miniSize + gap;
         const mini = new St.Widget({
-            style_class: single ? 'hs-mini hs-mini-bare' : 'hs-mini',
+            style_class: single ? 'cubby-mini cubby-mini-bare' : 'cubby-mini',
             layout_manager: new Clutter.BinLayout(),
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
@@ -249,16 +115,17 @@ class MoreSlot extends St.Button {
             height: (apps.length > 2 ? inner : miniSize) + 2 * pad,
         });
         mini.add_child(grid);
-        this.minis = apps.map((app, i) => {
-            const b = new AppIconBox(app, miniSize, {small: true, isNew: tile.controller.isNew(app.id)});
-            const col = (apps.length === 3 && i === 2) || apps.length === 1 ? 0.5 : i % 2;
-            b.set_position(pad + col * (miniSize + gap), pad + Math.floor(i / 2) * (miniSize + gap));
-            grid.add_child(b);
-            return b;
+        this._minis = apps.map((app, i) => {
+            const icon = new AppIcon(app, miniSize, {small: true, isNew: tile.controller.isNew(app.id)});
+            // one app, or the third of three, sits centred in its row
+            const col = apps.length === 1 || (apps.length === 3 && i === 2) ? 0.5 : i % 2;
+            icon.set_position(pad + col * (miniSize + gap), pad + Math.floor(i / 2) * (miniSize + gap));
+            grid.add_child(icon);
+            return icon;
         });
         if (badge > 0) {
             mini.add_child(new St.Label({
-                style_class: 'hs-badge',
+                style_class: 'cubby-badge',
                 text: `+${badge}`,
                 x_align: Clutter.ActorAlign.END,
                 y_align: Clutter.ActorAlign.END,
@@ -270,9 +137,8 @@ class MoreSlot extends St.Button {
         }
         this.set_child(mini);
         addPressFeedback(this);
-        this._badge = badge;
-        this.connect('clicked', () => tile.controller.openFolder(tile.folder.id, this));
-        this.connect('notify::hover', () => tile.controller.onSlotHover?.(this));
+        this.connect('clicked', () => tile.controller.openFolder(tile.folder.id));
+        this.connect('notify::hover', () => tile.controller.onSlotHover(this));
     }
 
     get tooltipText() {
@@ -282,39 +148,44 @@ class MoreSlot extends St.Button {
     }
 
     updateRunning(focusApp) {
-        for (const m of this.minis)
-            m.pips.update(m.app, focusApp === m.app);
-        const n = this.tile.folder.apps.length;
+        for (const icon of this._minis)
+            icon.updateRunning(focusApp);
+        const {name, apps} = this.tile.folder;
         this.accessible_name = this._badge > 0
-            ? _('%s, %d apps, %d more').format(this.tile.folder.name, n, this._badge)
-            : _('%s, %d apps').format(this.tile.folder.name, n);
+            ? _('%s, %d apps, %d more').format(name, apps.length, this._badge)
+            : _('%s, %d apps').format(name, apps.length);
     }
 });
 
 export const Tile = GObject.registerClass(
 class Tile extends St.Widget {
     /**
-     * @param {object} controller - activateApp(app, actor), openFolder(id, actor),
-     *   isNew(appId), focusApp
+     * @param {object} controller - the layer: activateApp(), openFolder(),
+     *   onSlotHover(), isNew(), focusApp
      * @param {object} folder - {id, name, apps}
      */
     _init(controller, folder) {
         super._init({
-            style_class: 'hs-tile',
+            style_class: 'cubby-tile',
             reactive: true,
             track_hover: true,
             layout_manager: new Clutter.FixedLayout(),
+            pivot_point: new Graphene.Point({x: 0.5, y: 0.5}),
         });
         this.controller = controller;
         this.folder = folder;
         this.rect = null;
         this.slots = [];
+        this.editing = false;
+        this.dragging = false;
+        this._key = '';
+
         this._content = new St.Widget({layout_manager: new Clutter.FixedLayout()});
         this.add_child(this._content);
 
         this._chipBin = new St.Widget({layout_manager: new Clutter.BinLayout()});
         this.chip = new St.Button({
-            style_class: 'hs-chip',
+            style_class: 'cubby-chip',
             label: folder.name,
             can_focus: false,
             reactive: true,
@@ -322,58 +193,53 @@ class Tile extends St.Widget {
             y_align: Clutter.ActorAlign.START,
             x_expand: true,
         });
-        this.chip.connect('clicked', () => controller.openFolder(this.folder.id, this));
+        this.chip.connect('clicked', () => controller.openFolder(this.folder.id));
         this._chipBin.add_child(this.chip);
         this.add_child(this._chipBin);
-        this._key = '';
-        this.editing = false;
-        this.dragging = false;
-        this.pivot_point = new Graphene.Point({x: 0.5, y: 0.5});
+
         this.connect('notify::hover', () => this._syncHandles());
         this.connect('key-focus-in', () => this._syncHandles());
         this.connect('key-focus-out', () => this._syncHandles());
     }
 
     /**
-     * Lays the tile out for a grid rect and pixel geometry.
+     * Places the tile and rebuilds its slots if anything they show changed.
      *
-     * @param {object} rect - {w, h} in cells
-     * @param {object} px - {x, y, width, height}
+     * @param {object} rect - {page, x, y, w, h} in cells
+     * @param {object} px - {x, y, width, height} on the board
      * @param {object} grid - metrics from computeGrid
      * @param {boolean} names - show app names
+     * @param {object} [params]
+     * @param {boolean} [params.force] - rebuild even if nothing changed
+     * @param {boolean} [params.animate] - move and resize smoothly (edit mode)
      */
     layout(rect, px, grid, names, {force = false, animate = false} = {}) {
         this.rect = {...rect};
         this._px = {...px};
+        this._grid = grid;
+        this._names = names;
         if (animate) {
-            this.ease({
-                x: px.x, y: px.y, width: px.width, height: px.height,
-                duration: MOVE_MS,
-                mode: Clutter.AnimationMode.EASE_OUT_BACK,
-            });
-            this._chipBin.ease({y: px.height + CHIP_GAP, duration: MOVE_MS, mode: Clutter.AnimationMode.EASE_OUT_BACK});
+            const mode = Clutter.AnimationMode.EASE_OUT_BACK;
+            this.ease({x: px.x, y: px.y, width: px.width, height: px.height, duration: MOVE_MS, mode});
+            this._chipBin.ease({y: px.height + CHIP_GAP, duration: MOVE_MS, mode});
         } else {
-            this.remove_transition('x');
-            this.remove_transition('y');
-            this.remove_transition('width');
-            this.remove_transition('height');
+            for (const prop of ['x', 'y', 'width', 'height'])
+                this.remove_transition(prop);
             this.set_position(px.x, px.y);
             this.set_size(px.width, px.height);
             this._chipBin.remove_transition('y');
             this._chipBin.set_position(0, px.height + CHIP_GAP);
         }
         this._content.set_size(px.width, px.height);
-        this._chipBin.width = px.width;
-        this._chipBin.height = CHIP_H;
+        this._chipBin.set_size(px.width, CHIP_H);
         this._syncDecorations();
-        const key = [rect.w, rect.h, px.width, px.height, names, grid.U,
-            this.folder.name, this.folder.apps.map(a => a.id).join(','),
-            this.folder.apps.map(a => this.controller.isNew(a.id)).join('')].join('|');
+
+        const {apps} = this.folder;
+        const key = [rect.w, rect.h, px.width, px.height, names, grid.U, this.folder.name,
+            apps.map(a => a.id).join(','), apps.map(a => this.controller.isNew(a.id)).join('')].join('|');
         if (key === this._key && !force)
             return;
         this._key = key;
-        this._grid = grid;
-        this._names = names;
         this._build();
         // resized in edit mode: the new arrangement fades in as the frame moves
         if (animate) {
@@ -385,22 +251,18 @@ class Tile extends St.Widget {
     setFolder(folder) {
         this.folder = folder;
         this.chip.label = folder.name;
-        if (this.rect && this._px)
+        if (this.rect)
             this.layout(this.rect, this._px, this._grid, this._names);
     }
 
     _build() {
         this._content.destroy_all_children();
         this.slots = [];
+        this.chip.label = this.folder.name;
         const {w, h} = this.rect;
         const g = this._grid;
         const apps = this.folder.apps;
-        const c = tileContent(apps.length, w, h);
-        if (w * h === 1)
-            this.add_style_class_name('hs-tile-one');
-        else
-            this.remove_style_class_name('hs-tile-one');
-        this.chip.label = this.folder.name;
+        const content = tileContent(apps.length, w, h);
         const rowH = this._px.height / h;
         const slotRect = i => ({
             x: (i % w) * (g.U + g.GX) + SLOT_MARGIN,
@@ -415,34 +277,39 @@ class Tile extends St.Widget {
             this.slots.push(slot);
         };
 
-        const size = g.iconSize(this._names);
-        const labelWidth = g.U - 2 * SLOT_MARGIN - 12;
-        for (let i = 0; i < c.big; i++)
-            place(new AppSlot(this, apps[i], size, this._names, labelWidth, this.controller.isNew(apps[i].id)), slotRect(i));
-        if (c.mini > 0) {
+        const slotParams = {
+            size: g.iconSize(this._names),
+            names: this._names,
+            labelWidth: g.U - 2 * SLOT_MARGIN - 12,
+        };
+        for (let i = 0; i < content.big; i++) {
+            const isNew = this.controller.isNew(apps[i].id);
+            place(new AppSlot(this, apps[i], {...slotParams, isNew}), slotRect(i));
+        }
+        if (content.mini > 0) {
             const single = w * h === 1;
-            const more = new MoreSlot(this, apps.slice(c.big, c.big + c.mini), c.badge,
-                single ? g.oneMiniSize : g.miniSize(this._names), single);
+            const more = new MoreSlot(this, apps.slice(content.big, content.big + content.mini), {
+                badge: content.badge,
+                miniSize: single ? g.oneMiniSize : g.miniSize(this._names),
+                single,
+            });
             place(more, single ? {
-                x: SLOT_MARGIN, y: SLOT_MARGIN,
-                width: this._px.width - 2 * SLOT_MARGIN, height: this._px.height - 2 * SLOT_MARGIN,
-            } : slotRect(c.big));
+                x: SLOT_MARGIN,
+                y: SLOT_MARGIN,
+                width: this._px.width - 2 * SLOT_MARGIN,
+                height: this._px.height - 2 * SLOT_MARGIN,
+            } : slotRect(content.big));
         }
         this.updateRunning();
     }
 
-    /** Refresh pips and accessible names (all slots, or one app's). */
+    /** Refreshes pips and accessible names, of every slot or one app's. */
     updateRunning(app = null) {
         const focus = this.controller.focusApp;
-        for (const s of this.slots) {
-            if (!app || s.app === app || s.apps?.includes(app))
-                s.updateRunning(focus);
+        for (const slot of this.slots) {
+            if (!app || slot.app === app || slot.apps?.includes(app))
+                slot.updateRunning(focus);
         }
-    }
-
-    /** Slot actors in reading order, for keyboard navigation. */
-    get focusables() {
-        return this.slots;
     }
 
     // ---- edit mode ----
@@ -460,64 +327,17 @@ class Tile extends St.Widget {
         this.editing = on;
         this._theme = theme;
         this.can_focus = on;
-        this.accessible_name = on ? _('%s folder, %d by %d').format(this.folder.name, this.rect.w, this.rect.h) : '';
+        this.accessible_name = on
+            ? _('%s folder, %d by %d').format(this.folder.name, this.rect.w, this.rect.h) : '';
+        this.remove_transition('rotation-angle-z');
         if (on) {
-            if (!this._outline) {
-                this._outline = new St.DrawingArea({reactive: false, opacity: 0});
-                this._outline.connect('repaint', a => {
-                    const [w, h] = a.get_surface_size();
-                    drawDashed(a, [{x: 0, y: 0, width: w, height: h}], {
-                        rgba: hexRgba(this._theme.accent, 1),
-                        radius: 32 + OUTLINE_OFFSET,
-                    });
-                });
-                this.insert_child_below(this._outline, null);
-                this._grip = new St.Widget({
-                    style_class: 'hs-grip',
-                    reactive: true,
-                    layout_manager: new Clutter.GridLayout({column_spacing: 4, row_spacing: 4}),
-                });
-                for (let i = 0; i < 6; i++)
-                    this._grip.layout_manager.attach(new St.Widget({style_class: 'hs-grip-dot'}), i % 3, Math.floor(i / 3), 1, 1);
-                this._grip.handleKind = 'move';
-                this.add_child(this._grip);
-                this.resizeHandle = new St.Widget({
-                    style_class: 'hs-resize',
-                    reactive: true,
-                    layout_manager: new Clutter.BinLayout(),
-                });
-                // corner glyph: an L in the accent's ink colour
-                this._resizeGlyph = new St.DrawingArea({
-                    width: 14,
-                    height: 14,
-                    x_align: Clutter.ActorAlign.CENTER,
-                    y_align: Clutter.ActorAlign.CENTER,
-                    x_expand: true,
-                    y_expand: true,
-                });
-                this._resizeGlyph.connect('repaint', a => {
-                    const cr = a.get_context();
-                    const [w, h] = a.get_surface_size();
-                    cr.setSourceRGBA(...hexRgba(this._theme.accentInk, 1));
-                    cr.setLineWidth(2.5);
-                    cr.setLineCap(1); // round
-                    cr.setLineJoin(1);
-                    cr.moveTo(w - 2, 2);
-                    cr.lineTo(w - 2, h - 2);
-                    cr.lineTo(2, h - 2);
-                    cr.stroke();
-                    cr.$dispose();
-                });
-                this.resizeHandle.add_child(this._resizeGlyph);
-                this.resizeHandle.handleKind = 'resize';
-                this.add_child(this.resizeHandle);
-            }
+            if (!this._outline)
+                this._createDecorations();
             this.syncAccent();
             this._syncDecorations();
             this._outline.show();
             this._outline.remove_all_transitions();
             this._outline.ease({opacity: 255, duration: DECOR_FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-            this.remove_transition('rotation-angle-z');
             if (wiggle) {
                 this.rotation_angle_z = -WIGGLE_DEG;
                 this.ease({
@@ -532,7 +352,6 @@ class Tile extends St.Widget {
         } else {
             // settle from wherever the wiggle was; the decorations are kept
             // for next time
-            this.remove_transition('rotation-angle-z');
             this.ease({rotation_angle_z: 0, duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
             this._outline?.ease({
                 opacity: 0,
@@ -544,29 +363,82 @@ class Tile extends St.Widget {
         this._syncHandles();
     }
 
-    /** Pauses or resumes the wiggle (paused while dragged). */
+    _createDecorations() {
+        this._outline = new St.DrawingArea({reactive: false, opacity: 0});
+        this._outline.connect('repaint', area => {
+            const [w, h] = area.get_surface_size();
+            drawDashed(area, [{x: 0, y: 0, width: w, height: h}], {
+                rgba: cairoRgba(this._theme.accent),
+                radius: CORNER_RADIUS + OUTLINE_OFFSET,
+            });
+        });
+        this.insert_child_below(this._outline, null);
+
+        this._grip = new St.Widget({
+            style_class: 'cubby-grip',
+            reactive: true,
+            layout_manager: new Clutter.GridLayout({column_spacing: 4, row_spacing: 4}),
+        });
+        for (let i = 0; i < 6; i++) {
+            this._grip.layout_manager.attach(new St.Widget({style_class: 'cubby-grip-dot'}),
+                i % 3, Math.floor(i / 3), 1, 1);
+        }
+        this._grip.handleKind = 'move';
+        this.add_child(this._grip);
+
+        this._resizeHandle = new St.Widget({
+            style_class: 'cubby-resize',
+            reactive: true,
+            layout_manager: new Clutter.BinLayout(),
+        });
+        // an L in the accent's ink colour
+        this._resizeGlyph = new St.DrawingArea({
+            width: 14,
+            height: 14,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+            y_expand: true,
+        });
+        this._resizeGlyph.connect('repaint', area => {
+            const cr = area.get_context();
+            const [w, h] = area.get_surface_size();
+            cr.setSourceRGBA(...cairoRgba(this._theme.accentInk));
+            cr.setLineWidth(2.5);
+            cr.setLineCap(1); // round
+            cr.setLineJoin(1); // round
+            cr.moveTo(w - 2, 2);
+            cr.lineTo(w - 2, h - 2);
+            cr.lineTo(2, h - 2);
+            cr.stroke();
+            cr.$dispose();
+        });
+        this._resizeHandle.add_child(this._resizeGlyph);
+        this._resizeHandle.handleKind = 'resize';
+        this.add_child(this._resizeHandle);
+    }
+
+    /** Pauses the wiggle and lifts the tile while it is dragged. */
     setDragging(on) {
         this.dragging = on;
         if (on) {
             this.remove_transition('rotation-angle-z');
             this.rotation_angle_z = 0;
-            this.add_style_class_name('hs-tile-dragging');
+            this.add_style_class_name('cubby-tile-dragging');
             this.ease({scale_x: 1.03, scale_y: 1.03, duration: 150});
         } else {
-            this.remove_style_class_name('hs-tile-dragging');
+            this.remove_style_class_name('cubby-tile-dragging');
             this.ease({scale_x: 1, scale_y: 1, duration: 200});
         }
         this._syncHandles();
     }
 
     syncAccent() {
-        if (!this._theme || !this.editing)
+        if (!this.editing || !this._outline)
             return;
-        this._outline?.queue_repaint();
-        if (this.resizeHandle) {
-            this.resizeHandle.style = `background-color: ${this._theme.accent};`;
-            this._resizeGlyph.queue_repaint();
-        }
+        this._outline.queue_repaint();
+        this._resizeHandle.style = `background-color: ${this._theme.accent};`;
+        this._resizeGlyph.queue_repaint();
     }
 
     _syncDecorations() {
@@ -578,19 +450,19 @@ class Tile extends St.Widget {
         this._outline.set_size(w + 2 * pad, h + 2 * pad);
         this._grip.set_position(Math.round(w / 2 - 23), -15);
         this._grip.set_size(46, 28);
-        this.resizeHandle.set_position(w - 17, h - 17);
-        this.resizeHandle.set_size(34, 34);
+        this._resizeHandle.set_position(w - 17, h - 17);
+        this._resizeHandle.set_size(34, 34);
     }
 
     _syncHandles() {
+        if (!this._grip)
+            return;
         const show = this.editing && (this.hover || this.has_key_focus() || this.dragging);
-        if (this._grip)
-            this._grip.visible = show;
-        if (this.resizeHandle)
-            this.resizeHandle.visible = show;
+        this._grip.visible = show;
+        this._resizeHandle.visible = show;
     }
 
-    /** Which handle (or null) an event source belongs to. */
+    /** 'move', 'resize' or null: which handle an event source belongs to. */
     handleFor(actor) {
         for (let a = actor; a && a !== this; a = a.get_parent()) {
             if (a.handleKind)

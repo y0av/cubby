@@ -11,17 +11,13 @@ import Graphene from 'gi://Graphene';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-export const DIM_SCALE = 0.965;
+const DIM_SCALE = 0.965;
 
 export class WindowDimmer {
     constructor() {
         // actor -> values before the first dim; kept until a restore finishes
         this._orig = new Map();
         this._dimmed = new Set();
-    }
-
-    get active() {
-        return this._dimmed.size > 0;
     }
 
     /**

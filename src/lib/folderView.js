@@ -8,13 +8,12 @@
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
-import Graphene from 'gi://Graphene';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {Pips, addPressFeedback, runningText} from './tile.js';
+import {AppIcon, accessibleName, addPressFeedback} from './appIcon.js';
 
 const PITCH_X = 166;
 const PITCH_Y = 158;
@@ -47,41 +46,30 @@ const FolderItem = GObject.registerClass(
 class FolderItem extends St.Button {
     _init(view, app) {
         super._init({
-            style_class: 'hs-folder-item hs-focusable',
+            style_class: 'cubby-folder-item cubby-focusable',
             can_focus: true,
             reactive: true,
             track_hover: true,
             width: PITCH_X,
             height: ITEM_H,
-            pivot_point: new Graphene.Point({x: 0.5, y: 0.5}),
         });
         this.kind = 'app';
         this.app = app;
         const box = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'hs-folder-item-box',
+            style_class: 'cubby-folder-item-box',
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
             x_expand: true,
             y_expand: true,
         });
-        const iconBox = new St.Widget({
-            layout_manager: new Clutter.BinLayout(),
-            width: ICON,
-            height: ICON,
+        this.appIcon = new AppIcon(app, ICON);
+        box.add_child(this.appIcon);
+        const name = new St.Label({
+            style_class: 'cubby-folder-name',
+            text: app.get_name(),
             x_align: Clutter.ActorAlign.CENTER,
         });
-        iconBox.add_child(new St.Icon({
-            style_class: 'hs-icon',
-            gicon: app.get_icon(),
-            fallback_icon_name: 'application-x-executable',
-            icon_size: ICON,
-        }));
-        this._pips = new Pips();
-        this._pips.translation_y = 8;
-        iconBox.add_child(this._pips);
-        box.add_child(iconBox);
-        const name = new St.Label({style_class: 'hs-folder-name', text: app.get_name(), x_align: Clutter.ActorAlign.CENTER});
         name.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         box.add_child(name);
         this.set_child(box);
@@ -90,9 +78,8 @@ class FolderItem extends St.Button {
     }
 
     updateRunning(focusApp) {
-        this._pips.update(this.app, focusApp === this.app);
-        const run = runningText(this.app);
-        this.accessible_name = run ? `${this.app.get_name()}, ${run}` : this.app.get_name();
+        this.appIcon.updateRunning(focusApp);
+        this.accessible_name = accessibleName(this.app);
     }
 });
 
@@ -171,7 +158,7 @@ class FolderView extends St.Widget {
         this._drag = null;
 
         this._panel = new St.Widget({
-            style_class: 'hs-folder',
+            style_class: 'cubby-folder',
             reactive: true,
             clip_to_allocation: true,
             layout_manager: new Clutter.FixedLayout(),
@@ -181,16 +168,16 @@ class FolderView extends St.Widget {
         this._inner = new St.Widget({layout_manager: new Clutter.FixedLayout(), opacity: 0});
         this._panel.add_child(this._inner);
 
-        this._title = new St.BoxLayout({style_class: 'hs-folder-title'});
-        this._titleName = new St.Label({style_class: 'hs-folder-title-name', y_align: Clutter.ActorAlign.END});
-        this._titleCount = new St.Label({style_class: 'hs-folder-title-count', y_align: Clutter.ActorAlign.END});
+        this._title = new St.BoxLayout({style_class: 'cubby-folder-title'});
+        this._titleName = new St.Label({style_class: 'cubby-folder-title-name', y_align: Clutter.ActorAlign.END});
+        this._titleCount = new St.Label({style_class: 'cubby-folder-title-count', y_align: Clutter.ActorAlign.END});
         this._title.add_child(this._titleName);
         this._title.add_child(this._titleCount);
         this._inner.add_child(this._title);
 
         // back to most used first, once the user has dragged things around
         this._sortButton = new St.Button({
-            style_class: 'hs-folder-sort',
+            style_class: 'cubby-folder-sort',
             label: _('Sort by use'),
             can_focus: true,
             visible: false,
@@ -199,7 +186,7 @@ class FolderView extends St.Widget {
         this._inner.add_child(this._sortButton);
 
         this._close = new St.Button({
-            style_class: 'hs-folder-close',
+            style_class: 'cubby-folder-close',
             can_focus: false,
             accessible_name: _('Close folder'),
             child: new St.Icon({icon_name: 'window-close-symbolic', icon_size: 16}),
@@ -208,7 +195,7 @@ class FolderView extends St.Widget {
         this._inner.add_child(this._close);
 
         this._scroll = new St.ScrollView({
-            style_class: 'hs-folder-scroll',
+            style_class: 'cubby-folder-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
             overlay_scrollbars: true,
@@ -369,7 +356,7 @@ class FolderView extends St.Widget {
         };
         item.remove_all_transitions();
         grid.set_child_above_sibling(item, null);
-        item.add_style_class_name('hs-folder-item-dragging');
+        item.add_style_class_name('cubby-folder-item-dragging');
         item.ease({scale_x: 1.08, scale_y: 1.08, duration: 120});
         return true;
     }
@@ -415,7 +402,7 @@ class FolderView extends St.Widget {
         const grid = this._grid;
         if (!commit)
             grid.order = d.startOrder;
-        d.item.remove_style_class_name('hs-folder-item-dragging');
+        d.item.remove_style_class_name('cubby-folder-item-dragging');
         d.item.ease({scale_x: 1, scale_y: 1, duration: 150});
         grid.relayout(true);
         this.items = grid.items;
@@ -423,13 +410,19 @@ class FolderView extends St.Widget {
         return commit && changed ? [...grid.order] : null;
     }
 
-    /** Moves an item by `delta` places (keyboard); returns the new order or null. */
-    moveItem(item, delta) {
+    /**
+     * Moves an item one place in a direction (keyboard).
+     *
+     * @param {FolderItem} item
+     * @param {number[]} dir - [dx, dy]
+     * @returns {string[]|null} the new order, or null if nothing moved
+     */
+    moveItem(item, [dx, dy]) {
         const grid = this._grid;
         if (!grid || this._drag)
             return null;
         const from = grid.order.indexOf(item.app.id);
-        const to = Math.max(0, Math.min(grid.order.length - 1, from + delta));
+        const to = Math.max(0, Math.min(grid.order.length - 1, from + dx + dy * MAX_COLS));
         if (from < 0 || to === from)
             return null;
         grid.order.splice(from, 1);

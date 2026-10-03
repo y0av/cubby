@@ -5,17 +5,17 @@
 // spatial navigation. No GI imports, so tests/ can run it in plain gjs.
 
 // Reference unit on a 1920x1200 monitor with a 48px panel (work area 1152 high).
-export const REF = {U: 156, V: 150, GX: 34, GY: 64, W: 1920, H: 1152};
-export const MIN_SCALE = 0.66;
-export const MAX_SCALE = 1.3;
+const REF = {U: 156, V: 150, GX: 34, GY: 64, W: 1920, H: 1152};
+const MIN_SCALE = 0.66;
+const MAX_SCALE = 1.3;
 export const MAX_COLS = 12;
-export const MAX_ROWS = 6;
+const MAX_ROWS = 6;
 export const MAX_TILE_W = 4;
 export const MAX_TILE_H = 3;
 
 export const PILL_H = 60;
-export const PILL_W = 820;
-export const CHIP_OVERHANG = 36; // folder name chip: 8px gap + 28px chip
+const PILL_W = 820;
+const CHIP_OVERHANG = 36; // folder name chip: 8px gap + 28px chip
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -47,7 +47,7 @@ function metricsFor(s, wa, clock) {
     const rowsFor = (top, bottom) => Math.floor(
         (wa.height - top - PILL_H - headerGap - CHIP_OVERHANG - bottom + GY) / (V + GY));
 
-    // the sketch's spacing first; tighter margins only if that costs a row
+    // roomy margins first; tighter ones only if the roomy ones cost a row
     const prefTop = Math.round((clock ? 84 : 152) * s), prefBottom = Math.round(116 * s);
     const tightTop = Math.round(24 * s), tightBottom = Math.round(64 * s);
     let rows = rowsFor(prefTop, prefBottom), tight = false;
@@ -73,7 +73,7 @@ function finishMetrics(m, wa, monitor) {
     const boardH = m.rows * m.V + (m.rows - 1) * m.GY;
     const used = m.top + PILL_H + m.headerGap + boardH + CHIP_OVERHANG + m.bottom;
     const spare = Math.max(0, wa.height - used);
-    // the sketch keeps the board high and leaves the slack below; with tight
+    // the board stays high with the slack left below it; with tight
     // margins split it 40/60 so the block does not hug the panel
     const top = m.top + (m.tight ? Math.round(spare * 0.4) : 0);
     const pillY = wa.y + top;

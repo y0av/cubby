@@ -16,7 +16,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 
 const FOLDERS_SCHEMA = 'org.gnome.desktop.app-folders';
 const FOLDER_SCHEMA = 'org.gnome.desktop.app-folders.folder';
-export const UNSORTED_ID = 'cubby:unsorted';
+const UNSORTED_ID = 'cubby:unsorted';
 const VIRTUAL_PREFIX = 'cubby:cat:';
 
 // GNOME's own default folders (ui/appDisplay.js DEFAULT_FOLDERS). A user
@@ -309,7 +309,7 @@ export class AppModel extends Signals.EventEmitter {
             if (!apps.length)
                 continue;
             apps.forEach(a => placed.add(a.id));
-            groups.push({id, name: folderName(s), apps, kind: 'folder'});
+            groups.push({id, name: folderName(s), apps});
         }
 
         const rest = [...visible.keys()]
@@ -319,7 +319,7 @@ export class AppModel extends Signals.EventEmitter {
         const organised = groups.some(g => !DEFAULT_FOLDER_IDS.includes(g.id));
         if (organised) {
             if (rest.length)
-                groups.push({id: UNSORTED_ID, name: _('Unsorted'), apps: rest, kind: 'unsorted'});
+                groups.push({id: UNSORTED_ID, name: _('Unsorted'), apps: rest});
         } else {
             // a category named like an existing folder (GNOME's default
             // "System") joins that folder instead of showing twice
@@ -397,7 +397,6 @@ export class AppModel extends Signals.EventEmitter {
                 id: `${VIRTUAL_PREFIX}${g.id}`,
                 name: Shell.util_get_translated_folder_name(`${g.id}.directory`) ?? g.name(),
                 apps: byGroup.get(g.id),
-                kind: 'virtual',
             }));
     }
 }
