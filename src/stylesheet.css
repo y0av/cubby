@@ -94,6 +94,53 @@
   padding: 2px 7px;
 }
 
+/* ---- search results ---- */
+.hs-results {
+  padding: 12px;
+  spacing: 10px;
+  border-radius: 28px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+}
+.hs-sec {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 2px 10px 0;
+}
+.hs-result {
+  height: 122px;
+  border-radius: 20px;
+  padding: 12px 6px 0;
+}
+.hs-result-box { spacing: 8px; }
+.hs-result-name { font-size: 13.5px; font-weight: 600; max-width: 136px; }
+.hs-result-texts { spacing: 2px; }
+.hs-result-caption { font-size: 12px; max-width: 140px; }
+.hs-other-flow { padding: 0 6px 2px; }
+.hs-other {
+  height: 38px;
+  border-radius: 19px;
+  padding: 0 14px 0 10px;
+}
+.hs-other-box { spacing: 9px; }
+.hs-other-name { font-size: 14px; max-width: 420px; }
+.hs-other-source { font-size: 12.5px; }
+.hs-none { padding: 22px 18px; font-size: 15px; }
+
+/* ---- tooltip ---- */
+.hs-tooltip {
+  padding: 6px 11px;
+  border-radius: 10px;
+  spacing: 6px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.hs-tooltip-main { font-size: 13.5px; font-weight: 600; }
+.hs-tooltip-sub { font-size: 13px; font-weight: 500; }
+
 /* ---- page dots ---- */
 .hs-dots { spacing: 10px; }
 .hs-dot {
@@ -124,6 +171,20 @@
 .hs-dark .hs-pill-icon { color: rgba(239, 241, 245, 0.75); }
 .hs-dark .hs-pill StEntry.hs-entry StLabel.hint-text,
 .hs-dark .hs-pill-count { color: rgba(239, 241, 245, 0.66); }
+.hs-dark .hs-results,
+.hs-dark .hs-tooltip { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.hs-dark .hs-sec,
+.hs-dark .hs-result-caption,
+.hs-dark .hs-other-source,
+.hs-dark .hs-none,
+.hs-dark .hs-tooltip-sub { color: rgba(239, 241, 245, 0.66); }
+.hs-dark .hs-result-name,
+.hs-dark .hs-result-caption.hs-live,
+.hs-dark .hs-other,
+.hs-dark .hs-tooltip-main { color: #eff1f5; }
+.hs-dark .hs-other { background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-result:hover,
+.hs-dark .hs-other:hover { background-color: rgba(255, 255, 255, 0.075); }
 .hs-dark .hs-dot { background-color: rgba(255, 255, 255, 0.35); }
 .hs-dark .hs-dot:checked { background-color: #eff1f5; }
 
@@ -148,5 +209,19 @@
 .hs-light .hs-pill-icon { color: rgba(30, 30, 46, 0.75); }
 .hs-light .hs-pill StEntry.hs-entry StLabel.hint-text,
 .hs-light .hs-pill-count { color: rgba(30, 30, 46, 0.64); }
+.hs-light .hs-results,
+.hs-light .hs-tooltip { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.hs-light .hs-sec,
+.hs-light .hs-result-caption,
+.hs-light .hs-other-source,
+.hs-light .hs-none,
+.hs-light .hs-tooltip-sub { color: rgba(30, 30, 46, 0.64); }
+.hs-light .hs-result-name,
+.hs-light .hs-result-caption.hs-live,
+.hs-light .hs-other,
+.hs-light .hs-tooltip-main { color: #1e1e2e; }
+.hs-light .hs-other { background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-result:hover,
+.hs-light .hs-other:hover { background-color: rgba(30, 30, 46, 0.065); }
 .hs-light .hs-dot { background-color: rgba(30, 30, 46, 0.30); }
 .hs-light .hs-dot:checked { background-color: #1e1e2e; }

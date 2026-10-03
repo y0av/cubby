@@ -143,6 +143,7 @@ class AppSlot extends St.Button {
         }
         this.set_child(box);
         this.connect('clicked', () => tile.controller.activateApp(app, this));
+        this.connect('notify::hover', () => tile.controller.onSlotHover?.(this));
     }
 
     get tooltipText() {
@@ -213,6 +214,7 @@ class MoreSlot extends St.Button {
         this.set_child(mini);
         this._badge = badge;
         this.connect('clicked', () => tile.controller.openFolder(tile.folder.id, this));
+        this.connect('notify::hover', () => tile.controller.onSlotHover?.(this));
     }
 
     get tooltipText() {
