@@ -100,3 +100,13 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 - **Reset layout** has no confirmation, as in the sketch. It discards every stored grid layout.
 - **First-run tip** is dismissed for good by "Got it" or by entering edit mode at all.
 - **Walkthrough:** `tools/walkthrough.sh` runs the section 6 script. At the end of M6 every step passed and the only log lines were GNOME Calendar's own Adwaita deprecation warnings (Calendar is started by its search provider). Screenshots in `shots/m6-walkthrough/`.
+
+## Theme (M7)
+
+- **Wallpaper luminance:** read once per change of `picture-uri`, `picture-uri-dark` (by colour scheme), `picture-options` or `primary-color`, by decoding the file asynchronously at 48×30 (`Gio.File.read_async` + `GdkPixbuf.Pixbuf.new_from_stream_at_scale_async`). The mean uses the sketch's formula; XML slideshows and plain colours fall back to the primary colour. The sample is kept for the clock halo.
+- **Spec change, light secondary text:** `rgba(30,30,46,.64)` measured 4.2–4.5:1 on all five test wallpapers, so it is now `.70` (4.6:1 or better). The dark tokens all pass unchanged.
+- **Spec change, minimum size:** the spec asks for 13px minimum text. The sketch's 12–12.5px badge, section labels, captions, chip sources and menu shortcut, the 11.5px keycap and the 10.5px "New" label are now 13px.
+- **Clock halo:** text sitting straight on a photo cannot be guaranteed 4.5:1 by a fixed colour (the forest wallpaper gave 3.4:1, the beach 1.1:1 with the dark clock against the palm trunk). The layer computes, from the wallpaper sample, the weakest halo that brings the clock to 5:1 against the brightest (or, for the dark clock, darkest) sampled pixel behind it, and draws it as a soft ellipse (St's radial gradient is circular, so the actor is stretched). On the five test wallpapers it is 0 for three and 0.18–0.22 for the other two.
+- **Check:** `tools/contrast.py` reproduces the scrim and halo and composites every text style over the 99th-percentile brightest (dark style) or 1st-percentile darkest (light style) backdrop in the board band. Results for the four sketch wallpapers and the author's current Bing wallpaper are in `shots/m7-contrast.txt`: every row passes.
+- **12-hour clock:** the time drops the leading zero and shows AM/PM as a smaller label beside it.
+- **Weather** is not included in v1 (possible follow-up: the shell's own `misc/weather.js` client).

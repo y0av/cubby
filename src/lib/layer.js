@@ -15,6 +15,9 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 
 import {Board} from './board.js';
 import {Coach, ContextMenu, EditBar} from './chrome.js';
+import {Clock} from './clock.js';
+import {WallpaperWatcher} from './wallpaper.js';
+import {contrast, luminance} from './theme.js';
 import {EditMode} from './editMode.js';
 import {FolderView} from './folderView.js';
 import {computeGrid, pickNeighbor} from './layoutEngine.js';
@@ -115,6 +118,13 @@ export const Layer = GObject.registerClass({
         this.pill = new SearchPill();
         this._content.add_child(this.pill);
 
+        // soft halo behind the clock, as strong as this wallpaper needs for
+        // the clock to reach 5:1 (often fully transparent)
+        this._clockHalo = new St.Widget({reactive: false, visible: false});
+        this._content.add_child(this._clockHalo);
+        this.clock = new Clock();
+        this._content.add_child(this.clock);
+
         // dims and catches clicks behind an open folder; a click closes it
         this._shield = new St.Widget({style_class: 'hs-shield', reactive: true, visible: false});
         this.add_child(this._shield);
@@ -148,6 +158,9 @@ export const Layer = GObject.registerClass({
         uiGroup.add_child(this);
         uiGroup.set_child_above_sibling(this, global.window_group);
 
+        this._wallpaper = new WallpaperWatcher();
+        this._wallpaper.connectObject('changed', (_w, lum) => this._applyScrim(lum), this);
+
         this._monitorIndex = Main.layoutManager.primaryIndex;
         this._syncTheme();
         this._syncGeometry();
@@ -161,7 +174,10 @@ export const Layer = GObject.registerClass({
         this._settings.connectObject('changed::tip-dismissed', () => this._syncCoach(), this);
 
         this._theme.connectObject('changed', () => this._syncTheme(), this);
-        this._settings.connectObject('changed::show-clock', () => this._syncGeometry(), this);
+        this._settings.connectObject('changed::show-clock', () => {
+            this._syncGeometry();
+            this._syncClock();
+        }, this);
         Main.layoutManager.connectObject('monitors-changed', () => {
             this.close({instant: true});
             this._monitorIndex = Main.layoutManager.primaryIndex;
@@ -363,6 +379,16 @@ export const Layer = GObject.registerClass({
         this.results.width = grid.pillW;
         this._centerX(this.editBar, grid.pillY);
         this.editBar.height = pillH;
+        this.clock.width = m.width;
+        this.clock.set_position(0, grid.clockY);
+        // St's radial gradient is circular: draw a circle and stretch it
+        // into an ellipse around the digits
+        const haloD = Math.round(300 * sf);
+        this._clockHalo.set_size(haloD, haloD);
+        this._clockHalo.set_pivot_point(0.5, 0.5);
+        this._clockHalo.scale_x = 8 / 3;
+        this._clockHalo.set_position(Math.round((m.width - haloD) / 2), grid.clockY + Math.round(50 * sf) - haloD / 2);
+        this._syncClockHalo();
         this._syncCoach();
     }
 
@@ -380,14 +406,56 @@ export const Layer = GObject.registerClass({
         this.remove_style_class_name(dark ? 'hs-light' : 'hs-dark');
         this.add_style_class_name(dark ? 'hs-dark' : 'hs-light');
         this.pill.setAccent(this._theme);
-        this._applyScrim(this._scrimStrength ?? 0.25);
+        this._applyScrim(this._wallpaper?.luminance ?? 0.3);
         this._paint(this._selected, !!this._selected && this._showSelection());
     }
 
     // Vertical scrim: strong at the top, light in the middle, a little
     // stronger at the bottom. Strength comes from the wallpaper's luminance.
+    _scrimAlpha(fy, lum) {
+        const a = 0.38 + lum * 0.42, b = 0.04 + lum * 0.3;
+        if (fy < 0.36)
+            return a + (b - a) * (fy / 0.36);
+        if (fy < 0.64)
+            return b;
+        return b + (a * 0.8 - b) * ((fy - 0.64) / 0.36);
+    }
+
+    _syncClockHalo() {
+        const m = this.monitor;
+        const lum = this._wallpaper?.luminance;
+        if (!m || !this.grid || lum === undefined)
+            return;
+        const bright = lum > 0.5;
+        const half = 170 / m.width;
+        const fy0 = this.grid.clockY / m.height, fy1 = (this.grid.clockY + 120) / m.height;
+        const ext = this._wallpaper.regionExtremes(0.5 - half, fy0, 0.5 + half, fy1, luminance);
+        let h = 0;
+        const haloColor = bright ? [255, 255, 255] : [12, 12, 20];
+        if (ext) {
+            const s = this._scrimAlpha((fy0 + fy1) / 2, lum);
+            const base = bright ? ext.darkest : ext.brightest;
+            const over = (top, al, bot) => bot.map((v, i) => top[i] * al + v * (1 - al));
+            const bg = over([12, 12, 20], s, base);
+            const text = bright ? [30, 30, 46] : [255, 255, 255];
+            while (h < 0.9 && contrast(text, over(haloColor, h, bg)) < 5)
+                h += 0.02;
+        }
+        this._clockHalo.visible = h > 0 && this.clock.visible;
+        const [r, g, b] = haloColor;
+        // the outer digits sit at about 60% of the radius, where the
+        // gradient has faded to 0.4 of its centre value
+        const centre = Math.min(0.9, h / 0.4);
+        this._clockHalo.style = `background-gradient-direction: radial; ` +
+            `background-gradient-start: rgba(${r},${g},${b},${centre.toFixed(2)}); ` +
+            `background-gradient-end: rgba(${r},${g},${b},0);`;
+        this._clockHalo.opacity = this.clock.opacity;
+    }
+
     _applyScrim(lum) {
         this._scrimStrength = lum;
+        this.clock.setBright(lum > 0.5);
+        this._syncClockHalo();
         const a = (0.38 + lum * 0.42).toFixed(3), b = (0.04 + lum * 0.3).toFixed(3);
         const a2 = (a * 0.8).toFixed(3);
         const grad = (from, to) => `background-gradient-direction: vertical; background-gradient-start: rgba(12,12,20,${from}); background-gradient-end: rgba(12,12,20,${to});`;
@@ -422,6 +490,7 @@ export const Layer = GObject.registerClass({
         this._setSelected(null);
         this.grab_key_focus();
         this._syncCoach();
+        this._syncClock();
 
         this._dimmer.dim(this._monitorIndex, {duration: WINDOW_DIM_MS});
         this._scrim.ease({
@@ -469,6 +538,7 @@ export const Layer = GObject.registerClass({
             this._grab = null;
         }
         this._model.markAllSeen();
+        this.clock.stop();
     }
 
     // back to a clean board for the next open
@@ -506,6 +576,7 @@ export const Layer = GObject.registerClass({
             this.editBar.translation_y = -10;
             this.editBar.ease({opacity: 255, translation_y: 0, duration: 250, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
             this._edit.enter();
+            this._syncClock();
             const first = tile ?? this.board.tiles.get(Object.keys(this.board.rects)
                 .sort((a, b) => this.board.rects[a].page - this.board.rects[b].page)[0]);
             (tile ?? first)?.grab_key_focus();
@@ -517,6 +588,7 @@ export const Layer = GObject.registerClass({
             this.pill.ease({opacity: 255, duration: 200});
             this.grab_key_focus();
             this._syncCoach();
+            this._syncClock();
         }
     }
 
@@ -546,6 +618,23 @@ export const Layer = GObject.registerClass({
         if (next.rect.page !== this.board.page)
             this.board.setPage(next.rect.page);
         next.grab_key_focus();
+    }
+
+    // ---- clock ----
+
+    _syncClock() {
+        const want = this._settings.get_boolean('show-clock') && this._isOpen;
+        const shown = want && (this.mode === Mode.BOARD || this.mode === Mode.FOLDER);
+        if (want)
+            this.clock.start();
+        else
+            this.clock.stop();
+        this.clock.visible = this._settings.get_boolean('show-clock');
+        this.clock.remove_transition('opacity');
+        this.clock.ease({opacity: shown ? 255 : 0, duration: shown ? 250 : 120});
+        this._syncClockHalo();
+        this._clockHalo.remove_transition('opacity');
+        this._clockHalo.ease({opacity: shown ? 255 : 0, duration: shown ? 250 : 120});
     }
 
     // ---- first-run tip ----
@@ -589,6 +678,7 @@ export const Layer = GObject.registerClass({
     _enterSearch() {
         this.mode = Mode.SEARCH;
         this._syncCoach();
+        this._syncClock();
         this.tooltip.showFor(null);
         this.pill.setSearching(true);
         this._searchShield.show();
@@ -617,6 +707,7 @@ export const Layer = GObject.registerClass({
         if (this.mode === Mode.SEARCH)
             this.mode = Mode.BOARD;
         this._syncCoach();
+        this._syncClock();
         this.pill.setSearching(false);
         this.pill.setHint('', '');
         this._searchShield.hide();
@@ -1059,6 +1150,8 @@ export const Layer = GObject.registerClass({
         this._cancelLongPress();
         this._edit.destroy();
         this._menu.destroy();
+        this._wallpaper.disconnectObject(this);
+        this._wallpaper.destroy();
         this._dimmer.restore({duration: 0});
         if (this._grab) {
             Main.popModal(this._grab);
