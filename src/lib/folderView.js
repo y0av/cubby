@@ -187,7 +187,7 @@ class FolderView extends St.Widget {
             item.set_scale(0.8, 0.8);
             item.ease({
                 opacity: 255, scale_x: 1, scale_y: 1,
-                delay: 100 + i * ITEM_STAGGER_MS,
+                delay: 100 + Math.min(i, 24) * ITEM_STAGGER_MS,
                 duration: 300,
                 mode: Clutter.AnimationMode.EASE_OUT_BACK,
             });

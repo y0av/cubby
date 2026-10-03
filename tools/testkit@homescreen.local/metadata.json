@@ -2,5 +2,11 @@
   "uuid": "testkit@homescreen.local",
   "name": "Home Screen test kit",
   "description": "Development only. Turns on unsafe mode in a nested test shell so Eval and Screenshot work over D-Bus. Never install in a real session.",
-  "shell-version": ["50"]
+  "shell-version": [
+    "50"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ]
 }

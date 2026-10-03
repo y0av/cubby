@@ -19,6 +19,7 @@ export class EditMode {
         this.active = false;
         this._drag = null;
         this._edgeId = 0;
+        this._followId = 0;
     }
 
     destroy() {
@@ -182,7 +183,8 @@ export class EditMode {
                 return GLib.SOURCE_REMOVE;
             b.setPage(b.page + dir);
             // keep the tile under the pointer once the strip has moved
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 420, () => {
+            this._followId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 420, () => {
+                this._followId = 0;
                 if (this._drag)
                     this.motion(...this._drag.last);
                 return GLib.SOURCE_REMOVE;
@@ -195,6 +197,9 @@ export class EditMode {
         if (this._edgeId)
             GLib.source_remove(this._edgeId);
         this._edgeId = 0;
+        if (this._followId)
+            GLib.source_remove(this._followId);
+        this._followId = 0;
     }
 
     // ---- keyboard ----

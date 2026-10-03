@@ -538,6 +538,18 @@ export const Layer = GObject.registerClass({
         this._syncCoach();
         this._syncClock();
 
+        // the layer covers one monitor; a press on another one closes it
+        this._outsideWatch ??= {};
+        global.stage.connectObject('captured-event', (_s, event) => {
+            const type = event.type();
+            if (type !== Clutter.EventType.BUTTON_PRESS && type !== Clutter.EventType.TOUCH_BEGIN)
+                return Clutter.EVENT_PROPAGATE;
+            const [x, y] = event.get_coords();
+            const m = this.monitor;
+            if (m && (x < m.x || y < m.y || x >= m.x + m.width || y >= m.y + m.height))
+                this.close();
+            return Clutter.EVENT_PROPAGATE;
+        }, this._outsideWatch);
         this._dimmer.dim(this._monitorIndex, {duration: WINDOW_DIM_MS});
         this._scrim.ease({
             opacity: 255,
@@ -620,6 +632,8 @@ export const Layer = GObject.registerClass({
         if (!this._isOpen)
             return;
         this._isOpen = false;
+        if (this._outsideWatch)
+            global.stage.disconnectObject(this._outsideWatch);
         this._cancelLongPress();
         if (this._menu.isOpen)
             this._menu.close();
@@ -973,6 +987,18 @@ export const Layer = GObject.registerClass({
         if (!this._isOpen)
             return;
         const focus = global.stage.key_focus;
+        // the focused item was destroyed (an app removed, a tile rebuilt):
+        // keep keys coming to the layer
+        if (!focus && Main.modalCount > 0 && this._grab) {
+            this.grab_key_focus();
+            return;
+        }
+        // a notification banner took keyboard focus (Super+N)
+        // (MessageTray overrides contains() for notification sources)
+        if (focus && Main.messageTray && Clutter.Actor.prototype.contains.call(Main.messageTray, focus)) {
+            this.close({instant: true});
+            return;
+        }
         if (focus && this.contains(focus) && focus.has_style_class_name?.('hs-focusable'))
             this._setSelected(focus);
         else if (this.mode !== Mode.SEARCH && focus !== this.pill.entry.clutter_text)
@@ -1291,6 +1317,8 @@ export const Layer = GObject.registerClass({
         this._engine.disconnectObject(this);
         this._engine.destroy();
         global.stage.disconnectObject(this);
+        if (this._outsideWatch)
+            global.stage.disconnectObject(this._outsideWatch);
         this._theme.disconnectObject(this);
         this._settings.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);

@@ -62,7 +62,7 @@ pack() {
 }
 
 start() {
-    local size=1920x1200 extra=() wall="" light="" accent=purple
+    local sizes=() extra=() wall="" light="" accent=purple nofolders="" napps=0
     while [[ $# -gt 0 ]]; do
         case $1 in
             --dock) extra+=(ubuntu-dock@ubuntu.com);;
@@ -70,8 +70,10 @@ start() {
             --blur) extra+=(blur-my-shell@aunetx);;
             --wall) wall=$2; shift;;
             --light) light=1;;
+            --no-folders) nofolders=1;;
+            --apps) napps=$2; shift;;
             --accent) accent=$2; shift;;
-            *x*) size=$1;;
+            *x*) sizes+=("--virtual-monitor" "$1");;
             *) echo "unknown arg $1" >&2; exit 2;;
         esac
         shift
@@ -91,7 +93,13 @@ start() {
         [[ -d $LIVE_EXT/$e ]] && cp -r "$LIVE_EXT/$e" "$NEST/data/gnome-shell/extensions/"
     done
     # snapshot of the user's folders and favourites (read only on the live side)
-    dconf dump /org/gnome/desktop/app-folders/ > "$NEST/app-folders.ini"
+    if [[ -n $nofolders ]]; then : > "$NEST/app-folders.ini"; else dconf dump /org/gnome/desktop/app-folders/ > "$NEST/app-folders.ini"; fi
+    # synthetic apps for scale tests
+    local cats=(Development Game Graphics AudioVideo Network Office Education Settings System Utility)
+    for ((i = 0; i < napps; i++)); do
+        printf '[Desktop Entry]\nType=Application\nName=Synthetic App %03d\nExec=true\nIcon=application-x-executable\nCategories=%s;\n' \
+            "$i" "${cats[$((i % ${#cats[@]}))]}" > "$NEST/data/applications/hs-synth-$i.desktop"
+    done
     # the user's own settings for the extensions under test (read only)
     : > "$NEST/ext-settings.sh"
     for e in "${extra[@]}"; do
@@ -131,8 +139,11 @@ gsettings set org.gnome.desktop.background picture-uri '$wall'
 gsettings set org.gnome.desktop.background picture-uri-dark '$wall'
 gsettings set org.gnome.desktop.session idle-delay 0
 gsettings set org.gnome.desktop.screensaver lock-enabled false
+# keep Tracker (started by the Files search provider) out of the real home
+gsettings set org.freedesktop.Tracker3.Miner.Files index-recursive-directories "[]" || true
+gsettings set org.freedesktop.Tracker3.Miner.Files index-single-directories "[]" || true
 mv "$NEST/bus.tmp" "$NEST/bus"
-exec gnome-shell --headless --wayland --no-x11 --virtual-monitor $size
+exec gnome-shell --headless --wayland --no-x11 ${sizes[*]:---virtual-monitor 1920x1200}
 EOF
     export GVFS_DISABLE_FUSE=1
     setsid -f bash -c 'echo $$ > "$0/sid"; exec dbus-run-session -- bash "$0/boot.sh"' "$NEST" > "$NEST/shell.log" 2>&1
@@ -149,7 +160,7 @@ EOF
     on_bus gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
         --method org.gnome.Shell.Eval 'Main.overview.hide(); Main.messageTray.getSources().forEach(s => s.destroy()); hsTest.move(global.stage.width / 2, global.stage.height - 2); 1' >/dev/null
     sleep 0.6
-    echo "nested shell up: $size, bus $(bus)"
+    echo "nested shell up: ${sizes[*]:-1920x1200}, bus $(bus)"
 }
 
 shot() {

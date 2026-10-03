@@ -267,7 +267,15 @@ export class AppModel extends Signals.EventEmitter {
             if (rest.length)
                 groups.push({id: UNSORTED_ID, name: _('Unsorted'), apps: rest, kind: 'unsorted'});
         } else {
-            groups.push(...this._categoryGroups(rest, visible));
+            // a category named like an existing folder (GNOME's default
+            // "System") joins that folder instead of showing twice
+            for (const g of this._categoryGroups(rest, visible)) {
+                const same = groups.find(f => f.name.toLocaleLowerCase() === g.name.toLocaleLowerCase());
+                if (same)
+                    same.apps.push(...g.apps.filter(a => !same.apps.includes(a)));
+                else
+                    groups.push(g);
+            }
         }
 
         for (const g of groups)
