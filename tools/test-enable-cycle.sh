@@ -4,7 +4,7 @@
 # errors logged. Needs a running nested shell (tools/nest.sh start).
 set -euo pipefail
 N=$(dirname "$0")/nest.sh
-UUID=homescreen@y0av.github.io
+UUID=cubby@y0av.github.io
 ev() { "$N" eval "$1"; }
 
 before=$("$N" log | wc -l)
@@ -36,7 +36,7 @@ const same = [op.show === b.show, op.hide === b.hide, op.toggle === b.toggle,
   Object.keys(Main.overview).length === b.own,
   Main.layoutManager.uiGroup.get_n_children() === b.kids,
   Main.modalCount === b.modal,
-  !Main.layoutManager.uiGroup.get_children().some(c => c.name === 'homescreenLayer')];
+  !Main.layoutManager.uiGroup.get_children().some(c => c.name === 'cubbyLayer')];
 JSON.stringify(same)"
 
 # stock behaviour is back: Super+A opens the stock app grid

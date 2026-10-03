@@ -91,7 +91,7 @@ export const Layer = GObject.registerClass({
 }, class Layer extends St.Widget {
     _init({settings, model, theme, extension}) {
         super._init({
-            name: 'homescreenLayer',
+            name: 'cubbyLayer',
             style_class: 'hs-layer',
             reactive: true,
             can_focus: true,

@@ -104,7 +104,7 @@ export class SearchEngine extends Signals.EventEmitter {
             this._timeoutId = 0;
             this._runProviders(terms, sub).catch(e => {
                 if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                    logError(e, 'homescreen: search provider');
+                    logError(e, 'cubby: search provider');
             });
             return GLib.SOURCE_REMOVE;
         });
@@ -188,7 +188,7 @@ export class SearchEngine extends Signals.EventEmitter {
                 publish();
             } catch (e) {
                 if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
-                    console.debug(`homescreen: provider ${provider.id}: ${e.message}`);
+                    console.debug(`cubby: provider ${provider.id}: ${e.message}`);
                     if (results.delete(provider))
                         publish();
                 }

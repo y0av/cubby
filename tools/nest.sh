@@ -16,7 +16,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-NEST=${HOMESCREEN_NEST:-${XDG_CACHE_HOME:-$HOME/.cache}/homescreen-nest}
+NEST=${CUBBY_NEST:-${XDG_CACHE_HOME:-$HOME/.cache}/cubby-nest}
 UUID=$(python3 -c "import json;print(json.load(open('$ROOT/src/metadata.json'))['uuid'])")
 LIVE_EXT=$HOME/.local/share/gnome-shell/extensions
 
@@ -85,7 +85,7 @@ start() {
     chmod 700 "$NEST/run"
     ln -s "$HOME/.local/share/fonts" "$NEST/data/fonts"
     cp "$HOME/.local/share/gnome-shell/application_state" "$NEST/data/gnome-shell/" 2>/dev/null || true
-    cp -r "$ROOT/tools/testkit@homescreen.local" "$NEST/data/gnome-shell/extensions/"
+    cp -r "$ROOT/tools/testkit@cubby.local" "$NEST/data/gnome-shell/extensions/"
     pack
     # the real install path: extracts and compiles the schema
     XDG_DATA_HOME="$NEST/data" gnome-extensions install --force "$ROOT/dist/$UUID.shell-extension.zip"
@@ -115,7 +115,7 @@ start() {
         echo "dconf load $d < '$NEST/$e.ini'" >> "$NEST/ext-settings.sh"
     done
     local favs; favs=$(gsettings get org.gnome.shell favorite-apps)
-    local enabled="['testkit@homescreen.local', '$UUID'"
+    local enabled="['testkit@cubby.local', '$UUID'"
     for e in "${extra[@]}"; do enabled+=", '$e'"; done
     enabled+="]"
     [[ -z $wall ]] && wall=$(gsettings get org.gnome.desktop.background picture-uri-dark | tr -d "'")

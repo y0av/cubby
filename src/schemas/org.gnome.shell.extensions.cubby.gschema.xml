@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="homescreen">
-  <schema id="org.gnome.shell.extensions.homescreen" path="/org/gnome/shell/extensions/homescreen/">
+<schemalist gettext-domain="cubby">
+  <schema id="org.gnome.shell.extensions.cubby" path="/org/gnome/shell/extensions/cubby/">
     <key name="show-clock" type="b">
       <default>false</default>
       <summary>Show a large clock and the date under the search field</summary>
@@ -19,7 +19,7 @@
     </key>
     <key name="use-stock-grid" type="b">
       <default>false</default>
-      <summary>Use the stock app grid instead of the home screen</summary>
+      <summary>Use the stock app grid instead of Cubby</summary>
     </key>
     <key name="layouts" type="s">
       <default>'{}'</default>

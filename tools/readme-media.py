@@ -43,7 +43,7 @@ _bus = None
 def _connection():
     global _bus
     if _bus is None:
-        addr = open(os.path.expanduser('~/.cache/homescreen-nest/bus')).read().strip()
+        addr = open(os.path.expanduser('~/.cache/cubby-nest/bus')).read().strip()
         _bus = Gio.DBusConnection.new_for_address_sync(
             addr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION,
             None, None)

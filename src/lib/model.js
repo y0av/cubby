@@ -16,8 +16,8 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 
 const FOLDERS_SCHEMA = 'org.gnome.desktop.app-folders';
 const FOLDER_SCHEMA = 'org.gnome.desktop.app-folders.folder';
-export const UNSORTED_ID = 'homescreen:unsorted';
-const VIRTUAL_PREFIX = 'homescreen:cat:';
+export const UNSORTED_ID = 'cubby:unsorted';
+const VIRTUAL_PREFIX = 'cubby:cat:';
 
 // GNOME's own default folders (ui/appDisplay.js DEFAULT_FOLDERS). A user
 // with only these has not organised anything, so the rest of their apps get

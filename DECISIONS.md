@@ -1,6 +1,6 @@
 # Decisions
 
-Working notes for the Home Screen extension. Each entry says what was decided and why. Shell file references are to the GNOME Shell 50.1 sources extracted from `/usr/lib/gnome-shell/libshell-18.so` (`gresource extract`), paths under `/org/gnome/shell/`. Line numbers are from that build (Ubuntu package 50.1-0ubuntu1.3).
+Working notes for Cubby. Each entry says what was decided and why. Shell file references are to the GNOME Shell 50.1 sources extracted from `/usr/lib/gnome-shell/libshell-18.so` (`gresource extract`), paths under `/org/gnome/shell/`. Line numbers are from that build (Ubuntu package 50.1-0ubuntu1.3).
 
 ## Sources read (M0)
 
@@ -50,7 +50,7 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 `tools/nest.sh` runs `dbus-run-session -- gnome-shell --headless --wayland --no-x11 --virtual-monitor WxH` with its own `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME` and `XDG_RUNTIME_DIR`. Without that, the nested shell's dconf writes (enabling extensions, test settings) would land in `~/.config/dconf/user` and the live shell would pick them up. The user's folders, favourites, usage history (`application_state`) and fonts are copied or linked in read-only.
 
 - `--devkit` is not usable here: the `mutter-devkit` viewer binary is not installed. Headless with a virtual monitor gives the same compositor without a window on the desktop.
-- A development-only helper extension (`tools/testkit@homescreen.local`, never packed) turns on `global.context.unsafe_mode` in the nested shell so `org.gnome.Shell.Eval` and `org.gnome.Shell.Screenshot` work for scripted tests.
+- A development-only helper extension (`tools/testkit@cubby.local`, never packed) turns on `global.context.unsafe_mode` in the nested shell so `org.gnome.Shell.Eval` and `org.gnome.Shell.Screenshot` work for scripted tests.
 - The machine's GPU is AMD (PCI vendor 0x1002), not Intel. Frame timings are measured on it.
 
 ## Board (M2)
@@ -141,7 +141,7 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 - **Apps installed or removed while open:** the tile list updates in place (about 5s after the file appears, which is the app system's own delay); a new "Unsorted" tile appears and disappears without rebuilding the other tiles.
 - **Default folders and categories:** a category group named like an existing folder (GNOME's default "System") is merged into it instead of showing two "System" tiles.
 - **Scale:** with 230 extra apps the model reload takes about 7ms, `open()` 5ms after the first open, the open wave stays at a 16.7ms median, and the 230-app folder opens in about 60ms and scrolls. The folder's pop-in stagger is capped at 24 items so the last icons don't arrive seconds late. A user with only GNOME's default folders and 230 apps gets 11 groups on one page with no holes (`shots/m10-no-folders-230.png`).
-- **Other extensions:** Dash to Panel and Blur my Shell were each disabled and re-enabled with Home Screen active, and the entry-point checks passed after each step (20 of 20 with Dash to Panel, 10 of 10 stock, 20 of 20 Ubuntu Dock). Two log lines from other code were each seen once and could not be reproduced: a `GLib-CRITICAL: Source ID … was not found` (it also appeared in M1, before Home Screen had any timeouts, so it is not ours) and a `TypeError … firstIcon.icon is null` in the hidden stock dash's `_adjustIconSize` (`ui/dash.js:602`) while Dash to Panel replaces it.
+- **Other extensions:** Dash to Panel and Blur my Shell were each disabled and re-enabled with Cubby active, and the entry-point checks passed after each step (20 of 20 with Dash to Panel, 10 of 10 stock, 20 of 20 Ubuntu Dock). Two log lines from other code were each seen once and could not be reproduced: a `GLib-CRITICAL: Source ID … was not found` (it also appeared in M1, before Cubby had any timeouts, so it is not ours) and a `TypeError … firstIcon.icon is null` in the hidden stock dash's `_adjustIconSize` (`ui/dash.js:602`) while Dash to Panel replaces it.
 - **Test rig:** the nested session's Tracker indexer (started by the Files search provider) began reading the real home folder; its index lives in the nested cache, but `tools/nest.sh` now sets its indexed directories to none.
 
 ## After first use on the live session

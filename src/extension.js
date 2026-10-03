@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Home Screen: replaces the Show Apps grid with folder tiles you place and
-// size yourself.
+// Cubby: a home screen for GNOME. Replaces the Show Apps grid with folder
+// tiles you place and size yourself.
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -11,7 +11,7 @@ import {Layer} from './lib/layer.js';
 import {AppModel} from './lib/model.js';
 import {Theme} from './lib/theme.js';
 
-export default class HomeScreenExtension extends Extension {
+export default class CubbyExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._theme = new Theme(this._settings);

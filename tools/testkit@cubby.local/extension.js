@@ -24,7 +24,7 @@ class TestApi {
     }
 
     layer() {
-        return Main.layoutManager.uiGroup.get_children().find(c => c.name === 'homescreenLayer');
+        return Main.layoutManager.uiGroup.get_children().find(c => c.name === 'cubbyLayer');
     }
 
     keyDown(keyval) {

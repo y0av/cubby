@@ -1,10 +1,10 @@
-# Home Screen
+# Cubby
 
-A GNOME Shell extension that replaces the Show Apps grid with a home screen like a phone's: your app folders become glass tiles that you place and size yourself on a grid. Each tile shows its most used apps as big icons, and the rest as a small preview with a "+N" count. A search field on top finds apps, settings and files.
+A home screen for GNOME Shell. Cubby replaces the Show Apps grid with your app folders as glass tiles that you place and size yourself on a grid, like the home screen on a phone. Each tile shows its most used apps as big icons, and the rest as a small preview with a "+N" count. A search field on top finds apps, settings and files.
 
 Only Show Apps changes. The Activities overview, window picker and workspaces stay as they are.
 
-![Opening Home Screen, searching, opening a folder, switching to the light style and editing the layout](docs/demo.gif)
+![Opening Cubby, searching, opening a folder, switching to the light style and editing the layout](docs/demo.gif)
 
 | Dark | Light |
 |---|---|
@@ -27,20 +27,20 @@ Only Show Apps changes. The Activities overview, window picker and workspaces st
 
 ## Requirements
 
-GNOME Shell 50. Works with the stock dash, Ubuntu Dock and Dash to Panel; their Show Apps buttons open Home Screen.
+GNOME Shell 50. Works with the stock dash, Ubuntu Dock and Dash to Panel; their Show Apps buttons open Cubby.
 
 ## Install
 
 From a release zip:
 
 ```sh
-gnome-extensions install --force homescreen@y0av.github.io.shell-extension.zip
+gnome-extensions install --force cubby@y0av.github.io.shell-extension.zip
 ```
 
 Log out and back in (GNOME on Wayland loads new extensions at login), then:
 
 ```sh
-gnome-extensions enable homescreen@y0av.github.io
+gnome-extensions enable cubby@y0av.github.io
 ```
 
 ## Use
@@ -66,17 +66,17 @@ Open them from the right-click menu or the Extensions app.
 - Show clock (a large clock and the date under the search field)
 - Frosted glass (a blurred copy of the wallpaper inside the tiles)
 - Custom accent colour
-- Use the stock app grid instead (turns Home Screen off without disabling the extension)
+- Use the stock app grid instead (turns Cubby off without disabling the extension)
 - Reset layout
 
 ## Privacy and your settings
 
-The extension reads your app folders, favourites and app usage from GNOME's settings and never writes to them. Its own layout, generated groups and preferences live in its own settings (`org.gnome.shell.extensions.homescreen`). The extension itself makes no network requests.
+The extension reads your app folders, favourites and app usage from GNOME's settings and never writes to them. Its own layout, generated groups and preferences live in its own settings (`org.gnome.shell.extensions.cubby`). The extension itself makes no network requests.
 
 ## Development
 
 ```sh
-tools/build.sh                 # pack dist/homescreen@y0av.github.io.shell-extension.zip
+tools/build.sh                 # pack dist/cubby@y0av.github.io.shell-extension.zip
 gjs -m tests/test-layout.js    # unit tests for packing, reflow, overflow counts, navigation
 tools/lint.sh                  # shexli, the extensions.gnome.org review linter
 tools/nest.sh start 1920x1200 --dtp   # isolated headless GNOME Shell with the extension

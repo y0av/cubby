@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Preferences for Home Screen (libadwaita).
+// Preferences for Cubby (libadwaita).
 
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
@@ -17,13 +17,13 @@ function rgbaToHex(rgba) {
     return `#${h(rgba.red)}${h(rgba.green)}${h(rgba.blue)}`;
 }
 
-export default class HomeScreenPreferences extends ExtensionPreferences {
+export default class CubbyPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window.set_default_size(640, 720);
 
         const page = new Adw.PreferencesPage({
-            title: _('Home Screen'),
+            title: _('Cubby'),
             icon_name: 'view-app-grid-symbolic',
         });
         window.add(page);

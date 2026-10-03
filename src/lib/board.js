@@ -24,7 +24,7 @@ export const Board = GObject.registerClass({
 }, class Board extends St.Widget {
     _init(controller, model, settings) {
         super._init({
-            name: 'homescreenBoard',
+            name: 'cubbyBoard',
             style_class: 'hs-board',
             reactive: true,
             clip_to_allocation: true,

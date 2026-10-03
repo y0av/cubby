@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the homescreen package.
+# This file is distributed under the same license as the cubby package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: homescreen\n"
+"Project-Id-Version: cubby\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 18:45+0300\n"
+"POT-Creation-Date: 2026-10-03 22:42+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
 #: src/prefs.js:26
-msgid "Home Screen"
+msgid "Cubby"
 msgstr ""
 
 #: src/prefs.js:32
@@ -190,51 +190,55 @@ msgstr ""
 msgid "%A, %-d %B"
 msgstr ""
 
-#: src/lib/folderView.js:110
+#: src/lib/folderView.js:189
+msgid "Sort by use"
+msgstr ""
+
+#: src/lib/folderView.js:199
 msgid "Close folder"
 msgstr ""
 
-#: src/lib/folderView.js:155 src/lib/layer.js:914 src/lib/tile.js:263
+#: src/lib/folderView.js:278 src/lib/layer.js:944 src/lib/tile.js:263
 #, javascript-format
 msgid "%d app"
 msgid_plural "%d apps"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/lib/layer.js:893
+#: src/lib/layer.js:923
 #, javascript-format
 msgid "Nothing matches “%s”. Enter opens %s."
 msgstr ""
 
-#: src/lib/layer.js:895
+#: src/lib/layer.js:925
 #, javascript-format
 msgid "Nothing matches “%s”. Enter searches %s."
 msgstr ""
 
-#: src/lib/layer.js:897
+#: src/lib/layer.js:927
 #, javascript-format
 msgid "Nothing matches “%s”."
 msgstr ""
 
-#: src/lib/layer.js:916
+#: src/lib/layer.js:946
 #, javascript-format
 msgid "%d other"
 msgid_plural "%d other"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/lib/layer.js:921
+#: src/lib/layer.js:951
 #, javascript-format
 msgid "Switch to %s"
 msgstr ""
 
-#: src/lib/layer.js:922 src/lib/layer.js:924 src/lib/layer.js:927
+#: src/lib/layer.js:952 src/lib/layer.js:954 src/lib/layer.js:957
 #: src/lib/tile.js:262
 #, javascript-format
 msgid "Open %s"
 msgstr ""
 
-#: src/lib/layer.js:928
+#: src/lib/layer.js:958
 #, javascript-format
 msgid "Search %s"
 msgstr ""
@@ -283,28 +287,28 @@ msgstr ""
 msgid "Other"
 msgstr ""
 
-#: src/lib/model.js:271
+#: src/lib/model.js:322
 msgid "Unsorted"
 msgstr ""
 
-#: src/lib/results.js:194
+#: src/lib/results.js:201
 msgid "Apps"
 msgstr ""
 
-#: src/lib/results.js:202
+#: src/lib/results.js:203
 msgid "Settings and files"
 msgstr ""
 
-#: src/lib/results.js:278
+#: src/lib/results.js:344
 msgid "Pinned"
 msgstr ""
 
-#: src/lib/results.js:280
+#: src/lib/results.js:346
 #, javascript-format
 msgid "Running · %s"
 msgstr ""
 
-#: src/lib/results.js:280
+#: src/lib/results.js:346
 msgid "Running"
 msgstr ""
 
@@ -342,44 +346,55 @@ msgstr ""
 msgid "%s folder, %d by %d"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:6
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:6
 msgid "Show a large clock and the date under the search field"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:10
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:10
 msgid "Show app names under the big icons on tiles"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:14
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:14
 msgid "Custom accent colour as #rrggbb; empty follows the system accent"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:18
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:18
 msgid "Show a blurred copy of the wallpaper inside tiles"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:22
-msgid "Use the stock app grid instead of the home screen"
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:22
+msgid "Use the stock app grid instead of Cubby"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:26
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:26
 msgid "Tile layout per grid size, as JSON"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:27
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:27
 msgid ""
 "Maps \"COLSxROWS\" to tile rectangles in grid units, keyed by folder id. "
 "Written by edit mode."
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:31
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:31
 msgid "Generated groups used when the user has no app folders, as JSON"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:35
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:35
+msgid "App order inside folders, as JSON"
+msgstr ""
+
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:36
+msgid ""
+"Maps a folder id to the app ids in the order the user dragged them into. "
+"Apps not listed follow, most used first. Never written to "
+"org.gnome.desktop.app-folders."
+msgstr ""
+
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:40
 msgid "App ids seen at the last open, used for the \"New\" marker"
 msgstr ""
 
-#: src/schemas/org.gnome.shell.extensions.homescreen.gschema.xml:39
+#: src/schemas/org.gnome.shell.extensions.cubby.gschema.xml:44
 msgid "Whether the first-run edit tip was dismissed"
 msgstr ""

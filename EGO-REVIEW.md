@@ -12,10 +12,10 @@ Checked against the [review guidelines](https://gjs.guide/extensions/review-guid
 | No `eval`, `Function()` or remote code | Pass | `grep` of `src/`. |
 | No bundled binaries or libraries | Pass | The zip holds only JavaScript, CSS, the schema and the metadata. |
 | Minimal logging | Pass | One `logError` for an unexpected search-provider failure and one `console.debug` for a provider error. Nothing on the normal path. |
-| Uses the extension's own GSettings schema | Pass | `org.gnome.shell.extensions.homescreen`; the schema is compiled by `gnome-extensions install` (checked) and by extensions.gnome.org. |
+| Uses the extension's own GSettings schema | Pass | `org.gnome.shell.extensions.cubby`; the schema is compiled by `gnome-extensions install` (checked) and by extensions.gnome.org. |
 | Never writes other components' settings | Pass | `org.gnome.desktop.app-folders`, `favorite-apps` and the shell keybinding settings are only read. The `toggle-application-view` keybinding is re-registered with the shell's own setting, not changed. |
 | Preferences in `prefs.js` with libadwaita | Pass | `ExtensionPreferences.fillPreferencesWindow`. |
-| Translations | Pass | `gettext-domain` in metadata; `po/homescreen.pot` generated with xgettext. |
+| Translations | Pass | `gettext-domain` in metadata; `po/cubby.pot` generated with xgettext. |
 | Licence | Pass | GPL-2.0-or-later (`COPYING`, SPDX headers). |
 | `shell-version` | Pass | `["50"]` only, the version it was tested on. |
 | Linter | Pass | `tools/lint.sh` (shexli 0.2.1): 0 findings. Note: shexli 0.2.1 crashes with tree-sitter 0.26 on this package; the script pins tree-sitter 0.25.2. |

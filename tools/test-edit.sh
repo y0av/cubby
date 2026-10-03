@@ -65,7 +65,7 @@ expect "drop into empty cell" "$(echo "$r" | python3 -c 'import json,sys;d=json.
 ev "hsTest.key('Escape'); 1" >/dev/null; sleep 0.5
 expect "Esc leaves edit mode" "$(ev "hsTest.layer().mode")" "board"
 saved=$(rect "$FOLDER")
-ev "Main.extensionManager.disableExtension('homescreen@y0av.github.io'); 1" >/dev/null; sleep 0.5
-ev "Main.extensionManager.enableExtension('homescreen@y0av.github.io'); 1" >/dev/null; sleep 0.8
+ev "Main.extensionManager.disableExtension('cubby@y0av.github.io'); 1" >/dev/null; sleep 0.5
+ev "Main.extensionManager.enableExtension('cubby@y0av.github.io'); 1" >/dev/null; sleep 0.8
 expect "layout persists across disable/enable" "$(rect "$FOLDER")" "$saved"
 exit $fail

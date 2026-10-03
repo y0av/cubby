@@ -1,4 +1,4 @@
-/* Home Screen. Light and dark glass are class variants on the layer root
+/* Cubby. Light and dark glass are class variants on the layer root
    (.hs-dark / .hs-light). Accent-coloured parts (selection, caret, keycap,
    edit outlines, Done) are styled from JS because the accent may be a
    custom hex. Sizes that depend on the grid unit are set from JS. */
