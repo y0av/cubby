@@ -30,6 +30,13 @@ import {WindowDimmer} from './windowDimmer.js';
 const SCRIM_FADE_MS = 450;
 const WINDOW_DIM_MS = 350;
 const CLOSE_MS = 260;
+// motion, from the sketch
+const OPEN_TILE_MS = 550;
+const OPEN_FADE_MS = 450;
+const WAVE_STAGGER_MS = 38;
+const CLOSE_TILE_MS = 260;
+const CLOSE_FADE_MS = 200;
+const LAUNCH_MS = 340;
 const SEARCH_FADE_MS = 220;
 const SEARCH_BOARD_OPACITY = 36; // about 14%
 const SEARCH_BLUR_RADIUS = 16;
@@ -185,7 +192,7 @@ export const Layer = GObject.registerClass({
         }, this);
         global.display.connectObject('workareas-changed', () => this._syncGeometry(),
             'notify::focus-window', () => {
-                if (this._isOpen && global.display.focus_window)
+                if (this._isOpen && global.display.focus_window && !this._launching)
                     this.close();
             }, this);
         Main.sessionMode.connectObject('updated', () => {
@@ -224,14 +231,46 @@ export const Layer = GObject.registerClass({
         return this._model.isNew(appId);
     }
 
-    activateApp(app, _actor, {newWindow = false} = {}) {
-        if (this.mode === Mode.EDIT)
+    activateApp(app, actor, {newWindow = false} = {}) {
+        if (this.mode === Mode.EDIT || this._launching)
             return;
+        // the icon swells and fades, then the layer closes; the app starts
+        // launching straight away
+        this._launching = true;
+        const icon = actor ? this._findIcon(actor) : null;
         if (newWindow && app.can_open_new_window())
             app.open_new_window(-1);
         else
             app.activate();
-        this.close();
+        if (!icon) {
+            this.close();
+            return;
+        }
+        this._launchIcon = icon;
+        icon.connectObject('destroy', () => {
+            if (this._launchIcon === icon)
+                this._launchIcon = null;
+        }, this);
+        icon.set_pivot_point(0.5, 0.5);
+        icon.ease({
+            scale_x: 1.45,
+            scale_y: 1.45,
+            opacity: 0,
+            duration: LAUNCH_MS,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            onStopped: () => this.close(),
+        });
+    }
+
+    _findIcon(actor) {
+        if (actor instanceof St.Icon)
+            return actor;
+        for (const child of actor.get_children()) {
+            const found = this._findIcon(child);
+            if (found)
+                return found;
+        }
+        return null;
     }
 
     openFolder(id, actor) {
@@ -498,7 +537,76 @@ export const Layer = GObject.registerClass({
             duration: SCRIM_FADE_MS,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
         });
+        this._animateOpen();
         this.emit('open-changed', true);
+    }
+
+    // Tiles pop in as a wave from the top-left, where the Show Apps button
+    // usually is; the search field drops in.
+    _animateOpen() {
+        for (const tile of this.board.tiles.values()) {
+            this._settleTile(tile);
+            if (tile.rect.page !== this.board.page)
+                continue;
+            const delay = WAVE_STAGGER_MS * (tile.rect.x + 1.4 * tile.rect.y);
+            tile.opacity = 0;
+            tile.set_scale(0.88, 0.88);
+            tile.translation_y = 26;
+            tile.ease({opacity: 255, delay, duration: OPEN_FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+            tile.ease({
+                scale_x: 1, scale_y: 1, translation_y: 0,
+                delay,
+                duration: OPEN_TILE_MS,
+                mode: Clutter.AnimationMode.EASE_OUT_BACK,
+            });
+        }
+        const pill = this.pill;
+        pill.remove_all_transitions();
+        pill.set_pivot_point(0.5, 0.5);
+        pill.opacity = 0;
+        pill.translation_y = -14;
+        pill.set_scale(0.97, 0.97);
+        pill.ease({opacity: 255, delay: 40, duration: 400, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        pill.ease({
+            translation_y: 0, scale_x: 1, scale_y: 1,
+            delay: 40,
+            duration: 500,
+            mode: Clutter.AnimationMode.EASE_OUT_BACK,
+        });
+    }
+
+    // The reverse wave, faster, tiles sinking. Returns its length in ms.
+    _animateClose() {
+        let longest = 0;
+        for (const tile of this.board.tiles.values()) {
+            if (tile.rect.page !== this.board.page || !tile.visible)
+                continue;
+            const delay = Math.max(0, (420 - WAVE_STAGGER_MS * (tile.rect.x + 1.4 * tile.rect.y)) * 0.35);
+            tile.ease({opacity: 0, delay, duration: CLOSE_FADE_MS, mode: Clutter.AnimationMode.EASE_IN_QUAD});
+            tile.ease({
+                scale_x: 0.92, scale_y: 0.92, translation_y: 14,
+                delay,
+                duration: CLOSE_TILE_MS,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            });
+            longest = Math.max(longest, delay + CLOSE_TILE_MS);
+        }
+        for (const a of [this.pill, this.results, this.folderView, this.clock, this._clockHalo,
+            this.coach, this.editBar, this._shield, this.tooltip]) {
+            if (a.visible)
+                a.ease({opacity: 0, duration: CLOSE_FADE_MS, mode: Clutter.AnimationMode.EASE_IN_QUAD});
+        }
+        return longest;
+    }
+
+    _settleTile(tile) {
+        tile.remove_transition('opacity');
+        tile.remove_transition('scale-x');
+        tile.remove_transition('scale-y');
+        tile.remove_transition('translation-y');
+        tile.opacity = 255;
+        tile.set_scale(1, 1);
+        tile.translation_y = 0;
     }
 
     close({instant = false} = {}) {
@@ -517,9 +625,10 @@ export const Layer = GObject.registerClass({
         if (instant) {
             this._finishClose();
         } else {
+            const wave = this._animateClose();
             this._scrim.ease({
                 opacity: 0,
-                duration,
+                duration: Math.max(duration, wave),
                 mode: Clutter.AnimationMode.EASE_IN_QUAD,
                 onStopped: () => this._finishClose(),
             });
@@ -532,7 +641,22 @@ export const Layer = GObject.registerClass({
             return;
         this._scrim.opacity = 0;
         this.hide();
+        this._launching = false;
+        if (this._launchIcon) {
+            this._launchIcon.disconnectObject(this);
+            this._launchIcon.remove_all_transitions();
+            this._launchIcon.set_scale(1, 1);
+            this._launchIcon.opacity = 255;
+            this._launchIcon = null;
+        }
         this._resetState();
+        for (const tile of this.board.tiles.values())
+            this._settleTile(tile);
+        for (const a of [this.pill, this.results, this.folderView, this.clock, this._clockHalo,
+            this.coach, this.editBar, this._shield, this.tooltip]) {
+            a.remove_transition('opacity');
+            a.opacity = 255;
+        }
         if (this._grab) {
             Main.popModal(this._grab);
             this._grab = null;

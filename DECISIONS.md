@@ -116,3 +116,10 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 - `Adw.SwitchRow`s bound to the settings; the custom accent is a switch plus a `Gtk.ColorDialogButton` (switching it on stores the button's colour, off stores an empty string so the system accent applies again). The author's mauve `#cba6f7` is the button's starting colour.
 - Reset layout in the preferences asks for confirmation with an `Adw.AlertDialog`, unlike the menu item, because the preferences window is easy to reach by accident and slow to undo. The board listens for `layouts` changes it did not make itself and regenerates.
 - Checked by opening the window inside the nested shell (`shots/m8-prefs.png`).
+
+## Motion (M9)
+
+- Open: each tile on the visible page fades in over 450ms and scales from 0.88 / 26px down with `EASE_OUT_BACK` over 550ms, delayed 38ms × (x + 1.4·y). The field drops 14px with the same curve. Close: the reverse wave, delay (420 − d) × 0.35ms, 200ms fade and 260ms sink to 0.92; the whole close takes about 400ms, and the modal is released at the end of it (as the overview does) so a click during the close cannot reach a window.
+- Launch: the clicked icon swells to 1.45 and fades over 340ms, the app is activated at the start of that (so it launches in parallel), and the layer closes when the icon finishes. Focus changes are ignored during the launch so the app's window taking focus does not cut the animation short.
+- `enable-animations` off: the shell's `ease()` already zeroes durations and delays; the edit-mode wiggle (an endless transition) is not started at all.
+- **Measured** in the nested shell at 1920×1200 with two app windows dimmed: open p50 16.7ms, p95 17.9ms per frame, one 33ms frame at the start; the close wave has no frame over 20ms. `open()` runs in 6–9ms after the first open (37ms the first time) and the first frame is painted 9–16ms after the call. This is AMD integrated graphics through the headless backend, not the Intel iGPU the spec names, and not the live session (which needs the author's permission).
