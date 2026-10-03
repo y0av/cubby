@@ -187,6 +187,10 @@ export const Layer = GObject.registerClass({
             'others', () => this._renderResults(), this);
         global.stage.connectObject('notify::key-focus', () => this._onKeyFocusChanged(), this);
         this.board.connectObject('layout-changed', () => this._onBoardRebuilt(), this);
+        this._model.connectObject('changed', (_m, structural) => {
+            if (structural)
+                this.folderView.retain(this._model.folders.map(f => f.id));
+        }, this);
         this._settings.connectObject('changed::tip-dismissed', () => this._syncCoach(), this);
 
         this._theme.connectObject('changed', () => this._syncTheme(), this);
@@ -292,7 +296,9 @@ export const Layer = GObject.registerClass({
             return;
         this.mode = Mode.FOLDER;
         this._syncCoach();
-        this._folderOpener = actor?.kind ? actor : tile.slots[tile.slots.length - 1] ?? null;
+        // the tile's slots may be rebuilt while the folder is open (a new
+        // order), so remember the tile, not the slot actor
+        this._folderOpener = tile;
         this._folderTile = tile;
         this.tooltip.showFor(null);
         this._setSelected(null);
@@ -313,7 +319,7 @@ export const Layer = GObject.registerClass({
             width: this.width,
             height: this.height,
             top: this.grid.workArea.y * (this.grid.sf ?? 1) + 24,
-        }, {focusApp: this._model.focusApp});
+        }, {focusApp: this._model.focusApp, customOrder: this._model.hasCustomOrder(id)});
         const first = this.folderView.items[0];
         if (first) {
             first.grab_key_focus();
@@ -351,14 +357,33 @@ export const Layer = GObject.registerClass({
                 },
             });
         }
-        const opener = this._folderOpener;
+        const openerTile = this._folderOpener;
         this._folderOpener = null;
+        const opener = openerTile?.get_stage()
+            ? openerTile.slots.find(sl => sl.kind === 'more') ?? openerTile.slots.at(-1) : null;
         if (opener?.get_stage()) {
             opener.grab_key_focus();
             this._setSelected(opener);
         } else {
             this.grab_key_focus();
         }
+    }
+
+    resetFolderOrder(id) {
+        if (!id)
+            return;
+        this._model.setFolderOrder(id, null);
+        const folder = this._model.folder(id);
+        if (folder)
+            this.folderView.reorder(folder.apps.map(a => a.id), false);
+    }
+
+    _saveFolderOrder(order) {
+        const id = this.folderView.folder?.id;
+        if (!id || !order)
+            return;
+        this._model.setFolderOrder(id, order);
+        this.folderView.reorder(order, true);
     }
 
     _tileRect(tile) {
@@ -1068,7 +1093,7 @@ export const Layer = GObject.registerClass({
         item.grab_key_focus();
         this._setSelected(item);
         if (this.mode === Mode.FOLDER)
-            ensureActorVisibleInScrollView(this.folderView._scroll, item);
+            ensureActorVisibleInScrollView(this.folderView.scrollView, item);
     }
 
     // ---- input ----
@@ -1085,6 +1110,22 @@ export const Layer = GObject.registerClass({
                 this._edit.motion(x, y);
                 return Clutter.EVENT_STOP;
             }
+            if (this.folderView.dragging) {
+                this.folderView.dragMotion(x, y);
+                return Clutter.EVENT_STOP;
+            }
+            // a press on a folder app that moves far enough starts a drag
+            const fp = this._folderPress;
+            if (fp && Math.hypot(x - fp.x, y - fp.y) > St.Settings.get().drag_threshold) {
+                this._folderPress = null;
+                fp.item.fake_release();
+                if (this.folderView.beginDrag(fp.item, fp.x, fp.y)) {
+                    this.tooltip.showFor(null);
+                    this._folderGrab = global.stage.grab(this);
+                    this.folderView.dragMotion(x, y);
+                    return Clutter.EVENT_STOP;
+                }
+            }
             if (this._longPress &&
                 Math.hypot(x - this._longPress.x, y - this._longPress.y) > LONG_PRESS_SLOP)
                 this._cancelLongPress();
@@ -1096,12 +1137,23 @@ export const Layer = GObject.registerClass({
         }
         if (type === Clutter.EventType.BUTTON_RELEASE) {
             this._cancelLongPress();
+            this._folderPress = null;
             if (this._edit.dragging) {
                 this._edit.endDrag(true);
                 return Clutter.EVENT_STOP;
             }
+            if (this.folderView.dragging) {
+                this._endFolderDrag(true);
+                return Clutter.EVENT_STOP;
+            }
         }
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    _endFolderDrag(commit) {
+        this._folderGrab?.dismiss();
+        this._folderGrab = null;
+        this._saveFolderOrder(this.folderView.endDrag(commit));
     }
 
     _onButtonPress(event) {
@@ -1109,6 +1161,12 @@ export const Layer = GObject.registerClass({
         const [x, y] = event.get_coords();
         const source = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y);
         const tile = source ? this.board.tileFor(source) : null;
+
+        if (this.mode === Mode.FOLDER && button === Clutter.BUTTON_PRIMARY) {
+            const item = source ? this.folderView.items.find(i => i === source || i.contains(source)) : null;
+            this._folderPress = item ? {item, x, y} : null;
+            return Clutter.EVENT_PROPAGATE;
+        }
 
         if (button === Clutter.BUTTON_SECONDARY && this.mode === Mode.BOARD) {
             this._menu.open(x, y);
@@ -1249,6 +1307,16 @@ export const Layer = GObject.registerClass({
         }
 
         if (this.mode === Mode.FOLDER) {
+            const alt = (state & Clutter.ModifierType.MOD1_MASK) !== 0;
+            if (dir && alt) {
+                // Alt+arrows move the focused app within the folder
+                if (this._selected?.kind === 'app' && this.folderView.items.includes(this._selected)) {
+                    const item = this._selected;
+                    this._saveFolderOrder(this.folderView.moveItem(item, dir[0] + dir[1] * 6));
+                    ensureActorVisibleInScrollView(this.folderView.scrollView, item);
+                }
+                return Clutter.EVENT_STOP;
+            }
             if (dir) {
                 this._move(...dir);
                 return Clutter.EVENT_STOP;
@@ -1273,6 +1341,10 @@ export const Layer = GObject.registerClass({
 
     // Esc: menu, then edit mode, then folder, then search, then close.
     _stepBack() {
+        if (this.folderView.dragging) {
+            this._endFolderDrag(false);
+            return;
+        }
         if (this.mode === Mode.EDIT) {
             if (this._edit.dragging)
                 this._edit.endDrag(false);
@@ -1295,6 +1367,14 @@ export const Layer = GObject.registerClass({
     vfunc_button_release_event(event) {
         if (event.get_button() !== Clutter.BUTTON_PRIMARY)
             return Clutter.EVENT_PROPAGATE;
+        // only a click on bare background steps back or closes; one that
+        // lands on a tile, the field, the results or the folder panel
+        // without hitting a button does nothing
+        const source = global.stage.get_event_actor(event);
+        const inside = [this.pill, this.results, this.folderView.panel, this.coach, this.editBar]
+            .some(a => a.visible && a.contains(source)) || !!this.board.tileFor(source);
+        if (inside)
+            return Clutter.EVENT_STOP;
         if (this.mode === Mode.FOLDER) {
             this.closeFolder();
             return Clutter.EVENT_STOP;
@@ -1312,6 +1392,7 @@ export const Layer = GObject.registerClass({
         this._menu.destroy();
         this._wallpaper.disconnectObject(this);
         this._wallpaper.destroy();
+        this._model.disconnectObject(this);
         this._dimmer.restore({duration: 0});
         if (this._grab) {
             Main.popModal(this._grab);

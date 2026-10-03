@@ -43,6 +43,9 @@ export class SearchEngine extends Signals.EventEmitter {
         this._cancellable = null;
         this._timeoutId = 0;
         this._previous = {};
+        // last answer of each provider, kept until it answers the new
+        // query, so results do not vanish and come back on every keystroke
+        this._providerResults = new Map();
         this.apps = [];
         this.others = [];
     }
@@ -59,6 +62,7 @@ export class SearchEngine extends Signals.EventEmitter {
         this._cancel();
         this._terms = [];
         this._previous = {};
+        this._providerResults.clear();
         this.apps = [];
         this.others = [];
     }
@@ -93,7 +97,7 @@ export class SearchEngine extends Signals.EventEmitter {
         this.apps = this._searchApps(terms);
         this.emit('apps', this.apps);
 
-        this.others = this._systemResults(terms);
+        this.others = this._mergeOthers(terms, this._providers());
         this.emit('others', this.others);
 
         this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROVIDER_DELAY_MS, () => {
@@ -136,18 +140,22 @@ export class SearchEngine extends Signals.EventEmitter {
         return list.filter(p => p.id !== 'applications');
     }
 
+    _mergeOthers(terms, providers) {
+        const others = [...this._systemResults(terms)];
+        for (const p of providers)
+            others.push(...(this._providerResults.get(p) ?? []));
+        return others.slice(0, MAX_OTHER);
+    }
+
     async _runProviders(terms, sub) {
         const cancellable = new Gio.Cancellable();
         this._cancellable = cancellable;
         const providers = this._providers();
-        const results = new Map();
+        const results = this._providerResults;
         const publish = () => {
             if (cancellable.is_cancelled())
                 return;
-            const others = [...this._systemResults(terms)];
-            for (const p of providers)
-                others.push(...(results.get(p) ?? []));
-            this.others = others.slice(0, MAX_OTHER);
+            this.others = this._mergeOthers(terms, providers);
             this.emit('others', this.others);
         };
         await Promise.all(providers.map(async provider => {
@@ -160,8 +168,11 @@ export class SearchEngine extends Signals.EventEmitter {
                     return;
                 this._previous[provider.id] = ids;
                 ids = provider.filterResults(ids, PER_PROVIDER);
-                if (!ids.length)
+                if (!ids.length) {
+                    if (results.delete(provider))
+                        publish();
                     return;
+                }
                 const metas = await provider.getResultMetas(ids, cancellable);
                 if (cancellable.is_cancelled())
                     return;
@@ -176,8 +187,11 @@ export class SearchEngine extends Signals.EventEmitter {
                 })));
                 publish();
             } catch (e) {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
                     console.debug(`homescreen: provider ${provider.id}: ${e.message}`);
+                    if (results.delete(provider))
+                        publish();
+                }
             }
         }));
     }

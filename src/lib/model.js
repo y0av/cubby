@@ -78,6 +78,10 @@ export class AppModel extends Signals.EventEmitter {
         this._focusApp = this._tracker.focus_app;
 
         const queue = () => this._queueReload();
+        this._settings.connectObject('changed::folder-orders', () => {
+            if (!this._writingOrders)
+                this.refreshUsage();
+        }, this);
         this._appSys.connectObject('installed-changed', queue, this);
         this._folderSettings.connectObject('changed::folder-children', queue, this);
         this._favorites.connectObject('changed', queue, this);
@@ -102,6 +106,7 @@ export class AppModel extends Signals.EventEmitter {
             GLib.source_remove(this._reloadId);
         this._reloadId = 0;
         this._appSys.disconnectObject(this);
+        this._settings.disconnectObject(this);
         this._folderSettings.disconnectObject(this);
         this._favorites.disconnectObject(this);
         this._parental.disconnectObject(this);
@@ -136,15 +141,61 @@ export class AppModel extends Signals.EventEmitter {
 
     /** Re-sort apps by usage; emits 'changed' for folders whose order moved. */
     refreshUsage() {
+        const orders = this._orders();
         const changed = new Set();
         for (const f of this.folders) {
             const before = f.apps.map(a => a.id).join('\n');
-            f.apps.sort((a, b) => this._compareApps(a, b));
+            this._sortApps(f, orders);
             if (f.apps.map(a => a.id).join('\n') !== before)
                 changed.add(f.id);
         }
         if (changed.size)
             this.emit('changed', false, changed);
+    }
+
+    /** Whether the user has put this folder's apps in their own order. */
+    hasCustomOrder(folderId) {
+        return Array.isArray(this._orders()[folderId]);
+    }
+
+    /**
+     * Stores the user's order for a folder (null goes back to most used
+     * first) and re-sorts it. Kept in the extension's own settings.
+     */
+    setFolderOrder(folderId, appIds) {
+        const orders = this._orders();
+        if (appIds)
+            orders[folderId] = appIds;
+        else
+            delete orders[folderId];
+        this._writingOrders = true;
+        try {
+            this._settings.set_string('folder-orders', JSON.stringify(orders));
+        } finally {
+            this._writingOrders = false;
+        }
+        this.refreshUsage();
+    }
+
+    _orders() {
+        try {
+            const o = JSON.parse(this._settings.get_string('folder-orders') || '{}');
+            return o && typeof o === 'object' ? o : {};
+        } catch {
+            return {};
+        }
+    }
+
+    // the user's order first (if any), then the rest most used first
+    _sortApps(folder, orders) {
+        const saved = orders[folder.id];
+        const pos = new Map(Array.isArray(saved) ? saved.map((id, i) => [id, i]) : []);
+        folder.apps.sort((a, b) => {
+            const pa = pos.get(a.id) ?? Infinity, pb = pos.get(b.id) ?? Infinity;
+            if (pa !== pb)
+                return pa - pb;
+            return this._compareApps(a, b);
+        });
     }
 
     /** Folders most used first, as {id, count} for layout generation. */
@@ -281,8 +332,9 @@ export class AppModel extends Signals.EventEmitter {
             }
         }
 
+        const orders = this._orders();
         for (const g of groups)
-            g.apps.sort((a, b) => this._compareApps(a, b));
+            this._sortApps(g, orders);
 
         this._groupOf.clear();
         for (const g of groups) {

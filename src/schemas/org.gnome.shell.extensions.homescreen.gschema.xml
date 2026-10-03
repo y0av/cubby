@@ -30,6 +30,11 @@
       <default>''</default>
       <summary>Generated groups used when the user has no app folders, as JSON</summary>
     </key>
+    <key name="folder-orders" type="s">
+      <default>'{}'</default>
+      <summary>App order inside folders, as JSON</summary>
+      <description>Maps a folder id to the app ids in the order the user dragged them into. Apps not listed follow, most used first. Never written to org.gnome.desktop.app-folders.</description>
+    </key>
     <key name="known-apps" type="as">
       <default>[]</default>
       <summary>App ids seen at the last open, used for the "New" marker</summary>

@@ -19,7 +19,7 @@ Only Show Apps changes. The Activities overview, window picker and workspaces st
 - **Your folders, your layout.** Tiles are your app folders (from GNOME's own app-folder settings, which the extension only reads). Apps in no folder go to an "Unsorted" tile. If you never made folders, apps are grouped by category instead. The first layout is generated from how much you use each folder; after that, tiles stay where you put them.
 - **Tiles from 1×1 to 4×3.** The most used apps get big icons with names; the rest show as a 2×2 preview with a "+N" for the apps you can't see. Running apps get a small bar under the icon, one mark per window.
 - **Search.** Start typing anywhere. Apps come first, ranked like GNOME's own search; settings, files and anything else from your enabled search providers follow. The field tells you what Enter will do ("Switch to Telegram").
-- **Folders.** Click a tile's preview or its name to grow the tile into a panel with every app in it.
+- **Folders.** Click a tile's preview or its name to grow the tile into a panel with every app in it. Drag apps to put them in your own order; the tile shows them in that order too. "Sort by use" puts it back.
 - **Edit mode.** Right-click and choose Edit layout, long-press a tile, or press Ctrl+E. Drag a tile to move it, drag its round corner handle to resize it. Each screen size keeps its own arrangement.
 - **Keyboard first.** Arrows move between icons, previews and tiles; Tab cycles; Enter opens; Esc steps back one level.
 - **Fits the screen.** The grid is worked out from your screen's work area, so it adapts to small laptops, docks on the side, 4K at 200% and ultrawides. Extra tiles go to further pages.
@@ -52,6 +52,7 @@ gnome-extensions enable homescreen@y0av.github.io
 | Move around | Arrows, Tab and Shift+Tab |
 | Open | Enter, or click. Ctrl+Enter opens a new window |
 | Folder | Click a tile's preview or name; Esc closes |
+| Reorder apps in a folder | Drag them, or Alt+arrows on the focused app |
 | Edit layout | Right-click → Edit layout, long-press a tile, or Ctrl+E |
 | Move or resize a tile | Drag it, or drag its round corner handle. With the keyboard: arrows move, Shift+arrows resize |
 | Leave | Esc steps back: menu, edit mode, folder, search, then closes |
