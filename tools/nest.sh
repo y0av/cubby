@@ -169,6 +169,8 @@ case $cmd in
     start) start "$@";;
     stop) stop;;
     eval) do_eval "$1";;
+    js) on_bus gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
+            --method org.gnome.Shell.Eval "$1" | "$ROOT/tools/gv.py";;
     shot) shot "$1";;
     scale) scale "$1";;
     gset) nest_env; GSETTINGS_SCHEMA_DIR="$NEST/data/gnome-shell/extensions/$UUID/schemas" on_bus gsettings "$@";;

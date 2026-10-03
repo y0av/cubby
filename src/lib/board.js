@@ -6,7 +6,7 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {Tile} from './tile.js';
+import {Tile, drawDashed} from './tile.js';
 import * as L from './layoutEngine.js';
 
 const PAGE_MS = 380;
@@ -37,6 +37,9 @@ export const Board = GObject.registerClass({
 
         this._strip = new St.Widget({layout_manager: new Clutter.FixedLayout()});
         this.add_child(this._strip);
+        this.editing = false;
+        this._placeholders = null;
+        this._ghost = null;
 
         this._dots = new St.BoxLayout({style_class: 'hs-dots', reactive: true});
         this.add_child(this._dots);
@@ -57,6 +60,14 @@ export const Board = GObject.registerClass({
 
     get names() {
         return this._settings.get_boolean('show-app-names');
+    }
+
+    get strip() {
+        return this._strip;
+    }
+
+    get pageWidth() {
+        return this._monW;
     }
 
     /** New grid metrics (monitor, work area, clock or scale changed). */
@@ -145,9 +156,104 @@ export const Board = GObject.registerClass({
             const r = this.rects[id];
             tile.layout(r, this.pixelRect(r), this.grid, names, {force});
         }
-        this.nPages = L.pageCount(this.rects);
+        // edit mode offers one empty page to move tiles onto
+        this.nPages = L.pageCount(this.rects) + (this.editing ? 1 : 0);
         this._syncDots();
+        this._syncPlaceholders();
         this.setPage(Math.min(this.page, this.nPages - 1), false);
+    }
+
+    // ---- edit mode ----
+
+    setEditing(on) {
+        this.editing = on;
+        if (on)
+            this.add_style_class_name('hs-board-editing');
+        else
+            this.remove_style_class_name('hs-board-editing');
+        if (on) {
+            this._placeholders = new St.DrawingArea({reactive: false});
+            this._placeholders.connect('repaint', a => this._drawPlaceholders(a));
+            this._strip.insert_child_below(this._placeholders, null);
+            this._ghost = new St.Widget({style_class: 'hs-ghost', reactive: false, visible: false});
+            this._strip.add_child(this._ghost);
+        } else {
+            this._placeholders?.destroy();
+            this._ghost?.destroy();
+            this._placeholders = this._ghost = null;
+        }
+        this.relayout();
+    }
+
+    _syncPlaceholders() {
+        if (!this._placeholders)
+            return;
+        const g = this.grid;
+        this._placeholders.set_position(0, g.boardY - 2);
+        this._placeholders.set_size(this.nPages * this._monW, g.boardH + 4);
+        this._placeholders.queue_repaint();
+    }
+
+    repaintPlaceholders() {
+        this._placeholders?.queue_repaint();
+    }
+
+    _drawPlaceholders(area) {
+        const g = this.grid;
+        const taken = new Set();
+        for (const r of Object.values(this.rects)) {
+            for (let y = r.y; y < r.y + r.h; y++) {
+                for (let x = r.x; x < r.x + r.w; x++)
+                    taken.add(`${r.page},${x},${y}`);
+            }
+        }
+        const rects = [];
+        for (let p = 0; p < this.nPages; p++) {
+            for (let y = 0; y < g.rows; y++) {
+                for (let x = 0; x < g.cols; x++) {
+                    if (taken.has(`${p},${x},${y}`))
+                        continue;
+                    const r = this.pixelRect({page: p, x, y, w: 1, h: 1});
+                    rects.push({x: r.x, y: r.y - g.boardY + 2, width: r.width, height: r.height});
+                }
+            }
+        }
+        drawDashed(area, rects, {rgba: [1, 1, 1, 0.3], fill: [12 / 255, 12 / 255, 20 / 255, 0.16]});
+    }
+
+    showGhost(rect, ok) {
+        if (!this._ghost)
+            return;
+        const r = this.pixelRect(rect);
+        const first = !this._ghost.visible;
+        this._ghost.show();
+        this._ghost.set_style_class_name(ok ? 'hs-ghost' : 'hs-ghost hs-ghost-bad');
+        this._strip.set_child_below_sibling(this._ghost, null);
+        this._strip.set_child_above_sibling(this._ghost, this._placeholders);
+        this._ghost.ease({
+            x: r.x, y: r.y, width: r.width, height: r.height,
+            duration: first ? 0 : 120,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+    }
+
+    hideGhost() {
+        this._ghost?.hide();
+    }
+
+    /** Moves or resizes one tile (edit mode), optionally saving. */
+    moveTile(id, rect, {animate = false, save = false} = {}) {
+        this.rects = {...this.rects, [id]: {...rect}};
+        const tile = this.tiles.get(id);
+        tile?.layout(this.rects[id], this.pixelRect(this.rects[id]), this.grid, this.names, {animate});
+        const n = L.pageCount(this.rects) + (this.editing ? 1 : 0);
+        if (n !== this.nPages) {
+            this.nPages = n;
+            this._syncDots();
+        }
+        this._syncPlaceholders();
+        if (save)
+            this.save();
     }
 
     _onModelChanged(structural, ids) {

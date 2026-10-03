@@ -162,6 +162,71 @@
 .hs-tooltip-main { font-size: 13.5px; font-weight: 600; }
 .hs-tooltip-sub { font-size: 13px; font-weight: 500; }
 
+/* ---- edit mode ---- */
+.hs-tile-dragging { box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45); }
+.hs-grip {
+  border-radius: 14px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 9px 13px;
+}
+.hs-grip-dot { width: 4px; height: 4px; border-radius: 2px; }
+.hs-resize {
+  border-radius: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.hs-ghost {
+  border-radius: 32px;
+  border: 2px solid #a6e3a1;
+  background-color: rgba(166, 227, 161, 0.12);
+}
+.hs-ghost-bad {
+  border-color: #f38ba8;
+  background-color: rgba(243, 139, 168, 0.12);
+}
+.hs-editbar {
+  height: 60px;
+  border-radius: 30px;
+  padding: 0 10px 0 26px;
+  spacing: 16px;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+}
+.hs-editbar-title { font-weight: 700; }
+.hs-done {
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 21px;
+  padding: 11px 22px;
+}
+.hs-coach {
+  height: 44px;
+  border-radius: 22px;
+  padding: 0 8px 0 18px;
+  spacing: 12px;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 14px;
+}
+.hs-coach-ok {
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 15px;
+  padding: 7px 14px;
+}
+.hs-menu .popup-menu-content {
+  border-radius: 16px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  min-width: 230px;
+}
+.hs-menu .popup-menu-item { border-radius: 10px; }
+.hs-menu-accel { font-size: 12.5px; padding-left: 20px; }
+
 /* ---- page dots ---- */
 .hs-dots { spacing: 10px; }
 .hs-dot {
@@ -213,6 +278,21 @@
 .hs-dark .hs-folder-close { color: rgba(239, 241, 245, 0.66); }
 .hs-dark .hs-folder-close:hover { color: #eff1f5; background-color: rgba(255, 255, 255, 0.075); }
 .hs-dark .hs-folder-item:hover { background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-board-editing .hs-slot:hover { background-color: transparent; }
+.hs-dark .hs-grip,
+.hs-dark .hs-editbar,
+.hs-dark .hs-coach { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.hs-dark .hs-grip-dot { background-color: #eff1f5; }
+.hs-dark .hs-editbar-title,
+.hs-dark .hs-coach,
+.hs-dark .hs-coach-ok { color: #eff1f5; }
+.hs-dark .hs-editbar-text { color: rgba(239, 241, 245, 0.66); }
+.hs-dark .hs-coach-ok { background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-coach-ok:hover { background-color: rgba(255, 255, 255, 0.14); }
+.hs-menu.hs-dark .popup-menu-content { background-color: rgba(26, 25, 36, 0.84); color: #eff1f5; }
+.hs-menu.hs-dark .popup-menu-item { color: #eff1f5; }
+.hs-menu.hs-dark .hs-menu-accel { color: rgba(239, 241, 245, 0.66); }
+.hs-menu.hs-dark .popup-separator-menu-item-separator { background-color: rgba(255, 255, 255, 0.10); }
 .hs-dark .hs-dot { background-color: rgba(255, 255, 255, 0.35); }
 .hs-dark .hs-dot:checked { background-color: #eff1f5; }
 
@@ -258,5 +338,20 @@
 .hs-light .hs-folder-close { color: rgba(30, 30, 46, 0.64); }
 .hs-light .hs-folder-close:hover { color: #1e1e2e; background-color: rgba(30, 30, 46, 0.065); }
 .hs-light .hs-folder-item:hover { background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-board-editing .hs-slot:hover { background-color: transparent; }
+.hs-light .hs-grip,
+.hs-light .hs-editbar,
+.hs-light .hs-coach { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.hs-light .hs-grip-dot { background-color: #1e1e2e; }
+.hs-light .hs-editbar-title,
+.hs-light .hs-coach,
+.hs-light .hs-coach-ok { color: #1e1e2e; }
+.hs-light .hs-editbar-text { color: rgba(30, 30, 46, 0.64); }
+.hs-light .hs-coach-ok { background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-coach-ok:hover { background-color: rgba(30, 30, 46, 0.12); }
+.hs-menu.hs-light .popup-menu-content { background-color: rgba(246, 246, 249, 0.90); color: #1e1e2e; border-color: rgba(255, 255, 255, 0.75); }
+.hs-menu.hs-light .popup-menu-item { color: #1e1e2e; }
+.hs-menu.hs-light .hs-menu-accel { color: rgba(30, 30, 46, 0.64); }
+.hs-menu.hs-light .popup-separator-menu-item-separator { background-color: rgba(30, 30, 46, 0.12); }
 .hs-light .hs-dot { background-color: rgba(30, 30, 46, 0.30); }
 .hs-light .hs-dot:checked { background-color: #1e1e2e; }

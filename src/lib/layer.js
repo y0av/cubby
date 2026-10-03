@@ -3,6 +3,7 @@
 // the state machine (board, search, folder, edit) and keyboard handling.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -13,6 +14,8 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
 import {Board} from './board.js';
+import {Coach, ContextMenu, EditBar} from './chrome.js';
+import {EditMode} from './editMode.js';
 import {FolderView} from './folderView.js';
 import {computeGrid, pickNeighbor} from './layoutEngine.js';
 import {ResultsPanel, appCaption} from './results.js';
@@ -30,6 +33,9 @@ const SEARCH_BLUR_RADIUS = 16;
 const RESULTS_GAP = 12;
 const FOLDER_BLUR_RADIUS = 24;
 const FOLDER_FADE_MS = 300;
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 8;
+const COACH_BOTTOM = 72;
 
 export const Mode = {BOARD: 'board', SEARCH: 'search', FOLDER: 'folder', EDIT: 'edit'};
 
@@ -67,7 +73,7 @@ export const Layer = GObject.registerClass({
         'open-changed': {param_types: [GObject.TYPE_BOOLEAN]},
     },
 }, class Layer extends St.Widget {
-    _init({settings, model, theme}) {
+    _init({settings, model, theme, extension}) {
         super._init({
             name: 'homescreenLayer',
             style_class: 'hs-layer',
@@ -79,7 +85,9 @@ export const Layer = GObject.registerClass({
         this._settings = settings;
         this._model = model;
         this._theme = theme;
+        this._extension = extension;
         this._isOpen = false;
+        this._longPress = null;
         this._grab = null;
         this._dimmer = new WindowDimmer();
         this.mode = Mode.BOARD;
@@ -117,8 +125,24 @@ export const Layer = GObject.registerClass({
         this.folderView = new FolderView(this);
         this.add_child(this.folderView);
 
+        this.editBar = new EditBar(() => this.setEditing(false));
+        this.add_child(this.editBar);
+
+        this.coach = new Coach(() => this._dismissCoach());
+        this.add_child(this.coach);
+
         this.tooltip = new Tooltip();
         this.add_child(this.tooltip);
+
+        this._edit = new EditMode(this.board, theme);
+        this._menu = new ContextMenu(this, {
+            edit: () => this.setEditing(true),
+            reset: () => this._resetLayout(),
+            prefs: () => {
+                this.close();
+                this._extension?.openPreferences();
+            },
+        }, settings);
 
         const uiGroup = Main.layoutManager.uiGroup;
         uiGroup.add_child(this);
@@ -134,6 +158,7 @@ export const Layer = GObject.registerClass({
             'others', () => this._renderResults(), this);
         global.stage.connectObject('notify::key-focus', () => this._onKeyFocusChanged(), this);
         this.board.connectObject('layout-changed', () => this._onBoardRebuilt(), this);
+        this._settings.connectObject('changed::tip-dismissed', () => this._syncCoach(), this);
 
         this._theme.connectObject('changed', () => this._syncTheme(), this);
         this._settings.connectObject('changed::show-clock', () => this._syncGeometry(), this);
@@ -201,6 +226,7 @@ export const Layer = GObject.registerClass({
         if (!folder || !tile)
             return;
         this.mode = Mode.FOLDER;
+        this._syncCoach();
         this._folderOpener = actor?.kind ? actor : tile.slots[tile.slots.length - 1] ?? null;
         this._folderTile = tile;
         this.tooltip.showFor(null);
@@ -234,6 +260,7 @@ export const Layer = GObject.registerClass({
         if (this.mode !== Mode.FOLDER)
             return;
         this.mode = Mode.BOARD;
+        this._syncCoach();
         const tile = this._folderTile;
         this._folderTile = null;
         this._setSelected(null);
@@ -334,10 +361,22 @@ export const Layer = GObject.registerClass({
         this.pill.set_size(grid.pillW, pillH);
         this.results.set_position(grid.pillX, grid.pillY + pillH + Math.round(RESULTS_GAP * sf));
         this.results.width = grid.pillW;
+        this._centerX(this.editBar, grid.pillY);
+        this.editBar.height = pillH;
+        this._syncCoach();
+    }
+
+    _centerX(actor, y) {
+        const [, natW] = actor.get_preferred_width(-1);
+        actor.set_position(Math.round((this.width - natW) / 2), y);
     }
 
     _syncTheme() {
         const dark = this._theme.dark;
+        this.editBar.setAccent(this._theme);
+        this._menu?.setDark(dark);
+        if (this._edit?.active)
+            this._edit.syncAccent();
         this.remove_style_class_name(dark ? 'hs-light' : 'hs-dark');
         this.add_style_class_name(dark ? 'hs-dark' : 'hs-light');
         this.pill.setAccent(this._theme);
@@ -382,6 +421,7 @@ export const Layer = GObject.registerClass({
         this._kb = false;
         this._setSelected(null);
         this.grab_key_focus();
+        this._syncCoach();
 
         this._dimmer.dim(this._monitorIndex, {duration: WINDOW_DIM_MS});
         this._scrim.ease({
@@ -396,6 +436,11 @@ export const Layer = GObject.registerClass({
         if (!this._isOpen)
             return;
         this._isOpen = false;
+        this._cancelLongPress();
+        if (this._menu.isOpen)
+            this._menu.close();
+        if (this.mode === Mode.EDIT)
+            this.setEditing(false);
 
         const duration = instant ? 0 : CLOSE_MS;
         this._dimmer.restore({duration});
@@ -440,6 +485,96 @@ export const Layer = GObject.registerClass({
         this.mode = Mode.BOARD;
     }
 
+    // ---- edit mode ----
+
+    setEditing(on, {tile = null} = {}) {
+        if (on === (this.mode === Mode.EDIT))
+            return;
+        if (on) {
+            if (this.mode === Mode.SEARCH)
+                this.pill.text = '';
+            if (this.mode === Mode.FOLDER)
+                this.closeFolder({instant: true});
+            this.mode = Mode.EDIT;
+            this._dismissCoach();
+            this._setSelected(null);
+            this.tooltip.showFor(null);
+            this.pill.ease({opacity: 0, duration: 150, onComplete: () => this.pill.hide()});
+            this._centerX(this.editBar, this.grid.pillY);
+            this.editBar.show();
+            this.editBar.opacity = 0;
+            this.editBar.translation_y = -10;
+            this.editBar.ease({opacity: 255, translation_y: 0, duration: 250, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+            this._edit.enter();
+            const first = tile ?? this.board.tiles.get(Object.keys(this.board.rects)
+                .sort((a, b) => this.board.rects[a].page - this.board.rects[b].page)[0]);
+            (tile ?? first)?.grab_key_focus();
+        } else {
+            this._edit.exit();
+            this.mode = Mode.BOARD;
+            this.editBar.ease({opacity: 0, duration: 150, onComplete: () => this.editBar.hide()});
+            this.pill.show();
+            this.pill.ease({opacity: 255, duration: 200});
+            this.grab_key_focus();
+            this._syncCoach();
+        }
+    }
+
+    _resetLayout() {
+        const editing = this.mode === Mode.EDIT;
+        if (editing)
+            this._edit.exit();
+        this.board.reset();
+        if (editing)
+            this._edit.enter();
+    }
+
+    _focusedTile() {
+        const f = global.stage.key_focus;
+        return f ? this.board.tileFor(f) : null;
+    }
+
+    _tabTiles(backward) {
+        const order = Object.keys(this.board.rects).sort((a, b) => {
+            const ra = this.board.rects[a], rb = this.board.rects[b];
+            return ra.page - rb.page || ra.y - rb.y || ra.x - rb.x;
+        }).map(id => this.board.tiles.get(id));
+        if (!order.length)
+            return;
+        const i = order.indexOf(this._focusedTile());
+        const next = order[(i + (backward ? -1 : 1) + order.length) % order.length] ?? order[0];
+        if (next.rect.page !== this.board.page)
+            this.board.setPage(next.rect.page);
+        next.grab_key_focus();
+    }
+
+    // ---- first-run tip ----
+
+    _syncCoach() {
+        const show = this._isOpen && !this._settings.get_boolean('tip-dismissed') &&
+            this.mode === Mode.BOARD && !!this.grid;
+        if (show) {
+            const sf = this.grid.sf ?? 1;
+            const [, natH] = this.coach.get_preferred_height(-1);
+            const y = Math.max(this.grid.bottomY + Math.round(24 * sf), this.height - Math.round(COACH_BOTTOM * sf) - natH);
+            this._centerX(this.coach, Math.min(y, this.height - natH - 8));
+            if (!this.coach.visible) {
+                this.coach.show();
+                this.coach.opacity = 0;
+                this.coach.ease({opacity: 255, delay: 600, duration: 300});
+            }
+        } else if (this.coach.visible) {
+            this.coach.remove_all_transitions();
+            this.coach.hide();
+        }
+    }
+
+    _dismissCoach() {
+        if (!this._settings.get_boolean('tip-dismissed'))
+            this._settings.set_boolean('tip-dismissed', true);
+        this._syncCoach();
+    }
+
     // ---- search ----
 
     _onQueryChanged(text) {
@@ -453,6 +588,7 @@ export const Layer = GObject.registerClass({
 
     _enterSearch() {
         this.mode = Mode.SEARCH;
+        this._syncCoach();
         this.tooltip.showFor(null);
         this.pill.setSearching(true);
         this._searchShield.show();
@@ -480,6 +616,7 @@ export const Layer = GObject.registerClass({
     _leaveSearch(instant = false) {
         if (this.mode === Mode.SEARCH)
             this.mode = Mode.BOARD;
+        this._syncCoach();
         this.pill.setSearching(false);
         this.pill.setHint('', '');
         this._searchShield.hide();
@@ -623,6 +760,8 @@ export const Layer = GObject.registerClass({
     _onBoardRebuilt() {
         if (this._selected && !this._selected.get_stage())
             this._setSelected(null);
+        if (this.mode === Mode.EDIT)
+            this._edit.refresh();
     }
 
     // Candidates for arrow and Tab navigation in the current mode.
@@ -687,12 +826,80 @@ export const Layer = GObject.registerClass({
         const type = event.type();
         if (type === Clutter.EventType.KEY_PRESS)
             return this._onKeyPress(event);
-        if (type === Clutter.EventType.MOTION && this._kb && this.mode !== Mode.SEARCH) {
-            this._kb = false;
-            this._paint(this._selected, false);
-            this.tooltip.showFor(null);
+        if (type === Clutter.EventType.BUTTON_PRESS)
+            return this._onButtonPress(event);
+        if (type === Clutter.EventType.MOTION) {
+            const [x, y] = event.get_coords();
+            if (this._edit.dragging) {
+                this._edit.motion(x, y);
+                return Clutter.EVENT_STOP;
+            }
+            if (this._longPress &&
+                Math.hypot(x - this._longPress.x, y - this._longPress.y) > LONG_PRESS_SLOP)
+                this._cancelLongPress();
+            if (this._kb && this.mode !== Mode.SEARCH) {
+                this._kb = false;
+                this._paint(this._selected, false);
+                this.tooltip.showFor(null);
+            }
+        }
+        if (type === Clutter.EventType.BUTTON_RELEASE) {
+            this._cancelLongPress();
+            if (this._edit.dragging) {
+                this._edit.endDrag(true);
+                return Clutter.EVENT_STOP;
+            }
         }
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    _onButtonPress(event) {
+        const button = event.get_button();
+        const [x, y] = event.get_coords();
+        const source = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y);
+        const tile = source ? this.board.tileFor(source) : null;
+
+        if (button === Clutter.BUTTON_SECONDARY && this.mode === Mode.BOARD) {
+            this._menu.open(x, y);
+            return Clutter.EVENT_STOP;
+        }
+        if (button !== Clutter.BUTTON_PRIMARY)
+            return Clutter.EVENT_PROPAGATE;
+
+        if (this.mode === Mode.EDIT) {
+            if (!tile)
+                return Clutter.EVENT_PROPAGATE;
+            const kind = tile.handleFor(source) === 'resize' ? 'resize' : 'move';
+            this._edit.beginDrag(tile, kind, x, y, this);
+            return Clutter.EVENT_STOP;
+        }
+        if (this.mode === Mode.BOARD && tile) {
+            // long-press a tile to start arranging, like a phone launcher
+            this._cancelLongPress();
+            let pressed = source;
+            while (pressed && !(pressed instanceof St.Button) && pressed !== tile)
+                pressed = pressed.get_parent();
+            const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
+                const lp = this._longPress;
+                this._longPress = null;
+                if (!lp || this.mode !== Mode.BOARD)
+                    return GLib.SOURCE_REMOVE;
+                if (lp.pressed instanceof St.Button)
+                    lp.pressed.fake_release();
+                this.setEditing(true, {tile: lp.tile});
+                const [px, py] = global.get_pointer();
+                this._edit.beginDrag(lp.tile, 'move', px, py, this);
+                return GLib.SOURCE_REMOVE;
+            });
+            this._longPress = {id, x, y, tile, pressed};
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _cancelLongPress() {
+        if (this._longPress)
+            GLib.source_remove(this._longPress.id);
+        this._longPress = null;
     }
 
     _onKeyPress(event) {
@@ -709,10 +916,45 @@ export const Layer = GObject.registerClass({
             return Clutter.EVENT_STOP;
         }
 
+        if (ctrl && (sym === Clutter.KEY_e || sym === Clutter.KEY_E)) {
+            this.setEditing(this.mode !== Mode.EDIT);
+            return Clutter.EVENT_STOP;
+        }
+
+        if (this.mode === Mode.BOARD &&
+            (sym === Clutter.KEY_Menu || (shift && sym === Clutter.KEY_F10))) {
+            const at = this._selected ?? this.pill;
+            const e = at.get_transformed_extents();
+            this._menu.open(e.get_x() + e.get_width() / 2, e.get_y() + e.get_height() / 2);
+            return Clutter.EVENT_STOP;
+        }
+
         const dir = {
             [Clutter.KEY_Left]: [-1, 0], [Clutter.KEY_Right]: [1, 0],
             [Clutter.KEY_Up]: [0, -1], [Clutter.KEY_Down]: [0, 1],
         }[sym];
+
+        if (this.mode === Mode.EDIT) {
+            const done = global.stage.key_focus === this.editBar.done;
+            if ((sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) && !done) {
+                this.setEditing(false);
+                return Clutter.EVENT_STOP;
+            }
+            if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
+                this._tabTiles(sym === Clutter.KEY_ISO_Left_Tab || shift);
+                return Clutter.EVENT_STOP;
+            }
+            if (dir) {
+                let tile = this._focusedTile();
+                if (!tile) {
+                    this._tabTiles(false);
+                    tile = this._focusedTile();
+                }
+                this._edit.key(tile, sym, shift);
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        }
 
         if (this.mode === Mode.SEARCH) {
             if (dir) {
@@ -780,6 +1022,13 @@ export const Layer = GObject.registerClass({
 
     // Esc: menu, then edit mode, then folder, then search, then close.
     _stepBack() {
+        if (this.mode === Mode.EDIT) {
+            if (this._edit.dragging)
+                this._edit.endDrag(false);
+            else
+                this.setEditing(false);
+            return;
+        }
         if (this.mode === Mode.FOLDER) {
             this.closeFolder();
             return;
@@ -799,12 +1048,17 @@ export const Layer = GObject.registerClass({
             this.closeFolder();
             return Clutter.EVENT_STOP;
         }
+        if (this.mode === Mode.EDIT)
+            return Clutter.EVENT_STOP;
         this.close();
         return Clutter.EVENT_STOP;
     }
 
     _onDestroy() {
         this._isOpen = false;
+        this._cancelLongPress();
+        this._edit.destroy();
+        this._menu.destroy();
         this._dimmer.restore({duration: 0});
         if (this._grab) {
             Main.popModal(this._grab);

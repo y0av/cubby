@@ -4,6 +4,7 @@
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
+import Graphene from 'gi://Graphene';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -17,6 +18,42 @@ const NAME_GAP = 11;
 const CHIP_GAP = 8;
 const CHIP_H = 28;
 const MAX_PIPS = 3;
+const OUTLINE_OFFSET = 5;
+const WIGGLE_DEG = 0.35;
+const WIGGLE_MS = 1100;
+const MOVE_MS = 380;
+
+function roundedRect(cr, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    cr.newSubPath();
+    cr.arc(x + w - r, y + r, r, -Math.PI / 2, 0);
+    cr.arc(x + w - r, y + h - r, r, 0, Math.PI / 2);
+    cr.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
+    cr.arc(x + r, y + r, r, Math.PI, 1.5 * Math.PI);
+    cr.closePath();
+}
+
+/** Strokes dashed rounded rects; `rects` are {x, y, width, height}. */
+export function drawDashed(area, rects, {rgba, fill = null, radius = 32, width = 1.5, dash = [6, 4]}) {
+    const cr = area.get_context();
+    cr.setLineWidth(width);
+    cr.setDash(dash, 0);
+    for (const r of rects) {
+        roundedRect(cr, r.x + width / 2, r.y + width / 2, r.width - width, r.height - width, radius);
+        if (fill) {
+            cr.setSourceRGBA(...fill);
+            cr.fillPreserve();
+        }
+        cr.setSourceRGBA(...rgba);
+        cr.stroke();
+    }
+    cr.$dispose();
+}
+
+export function hexRgba(hex, a) {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, a];
+}
 
 /** Accessible description of an app's running state. */
 export function runningText(app) {
@@ -268,6 +305,12 @@ class Tile extends St.Widget {
         this._chipBin.add_child(this.chip);
         this.add_child(this._chipBin);
         this._key = '';
+        this.editing = false;
+        this.dragging = false;
+        this.pivot_point = new Graphene.Point({x: 0.5, y: 0.5});
+        this.connect('notify::hover', () => this._syncHandles());
+        this.connect('key-focus-in', () => this._syncHandles());
+        this.connect('key-focus-out', () => this._syncHandles());
     }
 
     /**
@@ -278,13 +321,30 @@ class Tile extends St.Widget {
      * @param {object} grid - metrics from computeGrid
      * @param {boolean} names - show app names
      */
-    layout(rect, px, grid, names, {force = false} = {}) {
+    layout(rect, px, grid, names, {force = false, animate = false} = {}) {
         this.rect = {...rect};
-        this.set_position(px.x, px.y);
-        this.set_size(px.width, px.height);
+        this._px = {...px};
+        if (animate) {
+            this.ease({
+                x: px.x, y: px.y, width: px.width, height: px.height,
+                duration: MOVE_MS,
+                mode: Clutter.AnimationMode.EASE_OUT_BACK,
+            });
+            this._chipBin.ease({y: px.height + CHIP_GAP, duration: MOVE_MS, mode: Clutter.AnimationMode.EASE_OUT_BACK});
+        } else {
+            this.remove_transition('x');
+            this.remove_transition('y');
+            this.remove_transition('width');
+            this.remove_transition('height');
+            this.set_position(px.x, px.y);
+            this.set_size(px.width, px.height);
+            this._chipBin.remove_transition('y');
+            this._chipBin.set_position(0, px.height + CHIP_GAP);
+        }
         this._content.set_size(px.width, px.height);
-        this._chipBin.set_position(0, px.height + CHIP_GAP);
-        this._chipBin.set_size(px.width, CHIP_H);
+        this._chipBin.width = px.width;
+        this._chipBin.height = CHIP_H;
+        this._syncDecorations();
         const key = [rect.w, rect.h, px.width, px.height, names, grid.U,
             this.folder.name, this.folder.apps.map(a => a.id).join(','),
             this.folder.apps.map(a => this.controller.isNew(a.id)).join('')].join('|');
@@ -299,8 +359,8 @@ class Tile extends St.Widget {
     setFolder(folder) {
         this.folder = folder;
         this.chip.label = folder.name;
-        if (this.rect)
-            this.layout(this.rect, {x: this.x, y: this.y, width: this.width, height: this.height}, this._grid, this._names);
+        if (this.rect && this._px)
+            this.layout(this.rect, this._px, this._grid, this._names);
     }
 
     _build() {
@@ -310,9 +370,12 @@ class Tile extends St.Widget {
         const g = this._grid;
         const apps = this.folder.apps;
         const c = tileContent(apps.length, w, h);
-        this.set_style_class_name(w * h === 1 ? 'hs-tile hs-tile-one' : 'hs-tile');
+        if (w * h === 1)
+            this.add_style_class_name('hs-tile-one');
+        else
+            this.remove_style_class_name('hs-tile-one');
         this.chip.label = this.folder.name;
-        const rowH = this.height / h;
+        const rowH = this._px.height / h;
         const slotRect = i => ({
             x: (i % w) * (g.U + g.GX) + SLOT_MARGIN,
             y: Math.floor(i / w) * rowH + SLOT_MARGIN,
@@ -336,7 +399,7 @@ class Tile extends St.Widget {
                 single ? g.oneMiniSize : g.miniSize(this._names), single);
             place(more, single ? {
                 x: SLOT_MARGIN, y: SLOT_MARGIN,
-                width: this.width - 2 * SLOT_MARGIN, height: this.height - 2 * SLOT_MARGIN,
+                width: this._px.width - 2 * SLOT_MARGIN, height: this._px.height - 2 * SLOT_MARGIN,
             } : slotRect(c.big));
         }
         this.updateRunning();
@@ -354,5 +417,152 @@ class Tile extends St.Widget {
     /** Slot actors in reading order, for keyboard navigation. */
     get focusables() {
         return this.slots;
+    }
+
+    // ---- edit mode ----
+
+    /**
+     * Turns the edit decorations on or off: wiggle, dashed accent outline,
+     * and the grip and resize handle (shown on hover or focus only).
+     *
+     * @param {boolean} on
+     * @param {object} theme - accent source
+     * @param {number} phase - wiggle phase in ms
+     * @param {boolean} wiggle - false when animations are off
+     */
+    setEditing(on, theme, phase = 0, wiggle = true) {
+        this.editing = on;
+        this._theme = theme;
+        this.can_focus = on;
+        this.accessible_name = on ? _('%s folder, %d by %d').format(this.folder.name, this.rect.w, this.rect.h) : '';
+        if (on) {
+            if (!this._outline) {
+                this._outline = new St.DrawingArea({reactive: false});
+                this._outline.connect('repaint', a => {
+                    const [w, h] = a.get_surface_size();
+                    drawDashed(a, [{x: 0, y: 0, width: w, height: h}], {
+                        rgba: hexRgba(this._theme.accent, 1),
+                        radius: 32 + OUTLINE_OFFSET,
+                    });
+                });
+                this.insert_child_below(this._outline, null);
+                this._grip = new St.Widget({
+                    style_class: 'hs-grip',
+                    reactive: true,
+                    layout_manager: new Clutter.GridLayout({column_spacing: 4, row_spacing: 4}),
+                });
+                for (let i = 0; i < 6; i++)
+                    this._grip.layout_manager.attach(new St.Widget({style_class: 'hs-grip-dot'}), i % 3, Math.floor(i / 3), 1, 1);
+                this._grip.handleKind = 'move';
+                this.add_child(this._grip);
+                this.resizeHandle = new St.Widget({
+                    style_class: 'hs-resize',
+                    reactive: true,
+                    layout_manager: new Clutter.BinLayout(),
+                });
+                // corner glyph: an L in the accent's ink colour
+                this._resizeGlyph = new St.DrawingArea({
+                    width: 14,
+                    height: 14,
+                    x_align: Clutter.ActorAlign.CENTER,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    x_expand: true,
+                    y_expand: true,
+                });
+                this._resizeGlyph.connect('repaint', a => {
+                    const cr = a.get_context();
+                    const [w, h] = a.get_surface_size();
+                    cr.setSourceRGBA(...hexRgba(this._theme.accentInk, 1));
+                    cr.setLineWidth(2.5);
+                    cr.setLineCap(1); // round
+                    cr.setLineJoin(1);
+                    cr.moveTo(w - 2, 2);
+                    cr.lineTo(w - 2, h - 2);
+                    cr.lineTo(2, h - 2);
+                    cr.stroke();
+                    cr.$dispose();
+                });
+                this.resizeHandle.add_child(this._resizeGlyph);
+                this.resizeHandle.handleKind = 'resize';
+                this.add_child(this.resizeHandle);
+            }
+            this.syncAccent();
+            this._syncDecorations();
+            this.remove_transition('rotation-angle-z');
+            if (wiggle) {
+                this.rotation_angle_z = -WIGGLE_DEG;
+                this.ease({
+                    rotation_angle_z: WIGGLE_DEG,
+                    duration: WIGGLE_MS,
+                    delay: phase % WIGGLE_MS,
+                    mode: Clutter.AnimationMode.EASE_IN_OUT_SINE,
+                    repeatCount: -1,
+                    autoReverse: true,
+                });
+            }
+        } else {
+            this.remove_transition('rotation-angle-z');
+            this.rotation_angle_z = 0;
+            this._outline?.destroy();
+            this._grip?.destroy();
+            this.resizeHandle?.destroy();
+            this._outline = this._grip = this.resizeHandle = this._resizeGlyph = null;
+        }
+        this._syncHandles();
+    }
+
+    /** Pauses or resumes the wiggle (paused while dragged). */
+    setDragging(on) {
+        this.dragging = on;
+        if (on) {
+            this.remove_transition('rotation-angle-z');
+            this.rotation_angle_z = 0;
+            this.add_style_class_name('hs-tile-dragging');
+            this.ease({scale_x: 1.03, scale_y: 1.03, duration: 150});
+        } else {
+            this.remove_style_class_name('hs-tile-dragging');
+            this.ease({scale_x: 1, scale_y: 1, duration: 200});
+        }
+        this._syncHandles();
+    }
+
+    syncAccent() {
+        if (!this._theme || !this.editing)
+            return;
+        this._outline?.queue_repaint();
+        if (this.resizeHandle) {
+            this.resizeHandle.style = `background-color: ${this._theme.accent};`;
+            this._resizeGlyph.queue_repaint();
+        }
+    }
+
+    _syncDecorations() {
+        if (!this._outline || !this._px)
+            return;
+        const {width: w, height: h} = this._px;
+        const pad = OUTLINE_OFFSET + 1;
+        this._outline.set_position(-pad, -pad);
+        this._outline.set_size(w + 2 * pad, h + 2 * pad);
+        this._grip.set_position(Math.round(w / 2 - 23), -15);
+        this._grip.set_size(46, 28);
+        this.resizeHandle.set_position(w - 17, h - 17);
+        this.resizeHandle.set_size(34, 34);
+    }
+
+    _syncHandles() {
+        const show = this.editing && (this.hover || this.has_key_focus() || this.dragging);
+        if (this._grip)
+            this._grip.visible = show;
+        if (this.resizeHandle)
+            this.resizeHandle.visible = show;
+    }
+
+    /** Which handle (or null) an event source belongs to. */
+    handleFor(actor) {
+        for (let a = actor; a && a !== this; a = a.get_parent()) {
+            if (a.handleKind)
+                return a.handleKind;
+        }
+        return null;
     }
 });
