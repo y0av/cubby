@@ -53,6 +53,7 @@ gnome-extensions enable homescreen@y0av.github.io
 | Open | Enter, or click. Ctrl+Enter opens a new window |
 | Folder | Click a tile's preview or name; Esc closes |
 | Reorder apps in a folder | Drag them, or Alt+arrows on the focused app |
+| App menu | Right-click an app (or press the Menu key): New Window, the app's own actions, Pin, App Details, Quit |
 | Edit layout | Right-click → Edit layout, long-press a tile, or Ctrl+E |
 | Move or resize a tile | Drag it, or drag its round corner handle. With the keyboard: arrows move, Shift+arrows resize |
 | Leave | Esc steps back: menu, edit mode, folder, search, then closes |

@@ -12,6 +12,9 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
@@ -155,6 +158,8 @@ export const Layer = GObject.registerClass({
         this.add_child(this.tooltip);
 
         this._edit = new EditMode(this.board, theme);
+        this._appMenuManager = new PopupMenu.PopupMenuManager(this);
+        this._appMenu = null;
         this._menu = new ContextMenu(this, {
             edit: () => this.setEditing(true),
             reset: () => this._resetLayout(),
@@ -1096,6 +1101,53 @@ export const Layer = GObject.registerClass({
             ensureActorVisibleInScrollView(this.folderView.scrollView, item);
     }
 
+    // ---- app menu ----
+
+    // The app item (tile slot, folder app or search result) an actor is in.
+    _appItemFor(actor) {
+        for (let a = actor; a && a !== this; a = a.get_parent()) {
+            if (a.kind === 'app' && a.app)
+                return a;
+        }
+        return null;
+    }
+
+    // GNOME's own app menu (New Window, app actions, Pin, App Details,
+    // Quit). Its actions call Main.overview.hide(), which closes the layer.
+    _openAppMenu(item, {keyboard = false} = {}) {
+        // the previous menu is dropped only now: its App Details action
+        // finishes asynchronously after the menu has closed
+        this._appMenu?.destroy();
+        this.tooltip.showFor(null);
+        const menu = new AppMenu(item, St.Side.TOP, {
+            favoritesSection: true,
+            showSingleWindows: true,
+        });
+        menu.setApp(item.app);
+        Main.uiGroup.add_child(menu.actor);
+        this._appMenuManager.addMenu(menu);
+        this._appMenu = menu;
+        this._paint(item, true);
+        let itemGone = false;
+        // the item can go away under the menu (a tile rebuilt, results
+        // replaced); the stock AppIcon drops its menu the same way
+        item.connectObject('destroy', () => {
+            itemGone = true;
+            menu.close();
+        }, menu.actor);
+        menu.connect('open-state-changed', (_m, open) => {
+            if (!open && !itemGone)
+                this._paint(item, item === this._selected && this._showSelection());
+        });
+        menu.connect('destroy', () => {
+            if (this._appMenu === menu)
+                this._appMenu = null;
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
+        if (keyboard)
+            menu.actor.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
+    }
+
     // ---- input ----
 
     _onCapturedEvent(_actor, event) {
@@ -1168,9 +1220,18 @@ export const Layer = GObject.registerClass({
             return Clutter.EVENT_PROPAGATE;
         }
 
-        if (button === Clutter.BUTTON_SECONDARY && this.mode === Mode.BOARD) {
-            this._menu.open(x, y);
-            return Clutter.EVENT_STOP;
+        if (button === Clutter.BUTTON_SECONDARY && this.mode !== Mode.EDIT) {
+            // an app: GNOME's own app menu; anywhere else on the board: ours
+            const appItem = this._appItemFor(source);
+            if (appItem) {
+                this._openAppMenu(appItem);
+                return Clutter.EVENT_STOP;
+            }
+            if (this.mode === Mode.BOARD) {
+                this._menu.open(x, y);
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
         }
         if (button !== Clutter.BUTTON_PRIMARY)
             return Clutter.EVENT_PROPAGATE;
@@ -1230,12 +1291,18 @@ export const Layer = GObject.registerClass({
             return Clutter.EVENT_STOP;
         }
 
-        if (this.mode === Mode.BOARD &&
-            (sym === Clutter.KEY_Menu || (shift && sym === Clutter.KEY_F10))) {
-            const at = this._selected ?? this.pill;
-            const e = at.get_transformed_extents();
-            this._menu.open(e.get_x() + e.get_width() / 2, e.get_y() + e.get_height() / 2);
-            return Clutter.EVENT_STOP;
+        if ((sym === Clutter.KEY_Menu || (shift && sym === Clutter.KEY_F10)) && this.mode !== Mode.EDIT) {
+            const appItem = this._selected ? this._appItemFor(this._selected) : null;
+            if (appItem) {
+                this._openAppMenu(appItem, {keyboard: true});
+                return Clutter.EVENT_STOP;
+            }
+            if (this.mode === Mode.BOARD) {
+                const at = this._selected ?? this.pill;
+                const e = at.get_transformed_extents();
+                this._menu.open(e.get_x() + e.get_width() / 2, e.get_y() + e.get_height() / 2);
+                return Clutter.EVENT_STOP;
+            }
         }
 
         const dir = {
@@ -1390,6 +1457,7 @@ export const Layer = GObject.registerClass({
         this._cancelLongPress();
         this._edit.destroy();
         this._menu.destroy();
+        this._appMenu?.destroy();
         this._wallpaper.disconnectObject(this);
         this._wallpaper.destroy();
         this._model.disconnectObject(this);
