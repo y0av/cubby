@@ -2,6 +2,7 @@
   "uuid": "cubby@y0av.github.io",
   "name": "Cubby",
   "description": "A home screen for GNOME. Cubby replaces the Show Apps grid with your app folders as glass tiles you place and size yourself, like the home screen on a phone: big icons for the apps you use most, a preview of the rest, search across apps, settings and files, full keyboard control and an edit mode. Works with the stock dash, Dash to Panel and Ubuntu Dock.",
+  "url": "https://github.com/y0av/cubby",
   "shell-version": [
     "50"
   ],
