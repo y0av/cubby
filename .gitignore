@@ -2,3 +2,4 @@ dist/
 *.mo
 schemas/gschemas.compiled
 __pycache__/
+shots/
