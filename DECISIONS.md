@@ -73,3 +73,11 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 - **Providers:** up to 3 results per provider and 8 "other" results in total, in the provider order the shell already sorted. Remote providers start 150ms after the last keystroke (the overview's delay); a query that extends the previous one uses `getSubsearchResultSet`.
 - **No results:** Enter runs GNOME Software's `LaunchSearch` through its search provider when it is installed. Ubuntu's App Center has no search entry point (it is not a search provider and has no documented search argument), so without GNOME Software the row says Enter *opens* App Center.
 - **Clutter quirks:** `Clutter.FlowLayout` allocates its children with zero height in Mutter 50, so the chips use a 60-line `WrapLayout`. A negative `margin-top` on an `St.Label` inside an `St.BoxLayout` produced an overflowed allocation; the caption sits in its own box with 2px spacing instead.
+
+## Folder view (M4)
+
+- The board and the search field live in one content actor, so a single `Shell.BlurEffect` covers both behind an open folder (the target shows the field blurred too). Search blurs only the board, since the field must stay sharp.
+- Two click catchers: a transparent one between the board and the field while searching, and the dimmed backdrop above everything while a folder is open. One shared catcher would have covered the search field.
+- The panel grows from the tile's on-screen rect with `EASE_OUT_QUART` over 420ms; the sketch's slight overshoot curve has no Clutter equivalent and `EASE_OUT_BACK` overshoots far more. The tile is hidden while its folder is open and comes back when the panel has shrunk into it.
+- Folders taller than the screen scroll inside the panel (`St.ScrollView` with an `St.Viewport`).
+- Typing inside a folder closes it and searches everything; Esc returns focus to the slot that opened the folder.

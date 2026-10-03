@@ -10,7 +10,10 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
+
 import {Board} from './board.js';
+import {FolderView} from './folderView.js';
 import {computeGrid, pickNeighbor} from './layoutEngine.js';
 import {ResultsPanel, appCaption} from './results.js';
 import {SearchEngine} from './searchEngine.js';
@@ -25,6 +28,8 @@ const SEARCH_FADE_MS = 220;
 const SEARCH_BOARD_OPACITY = 36; // about 14%
 const SEARCH_BLUR_RADIUS = 16;
 const RESULTS_GAP = 12;
+const FOLDER_BLUR_RADIUS = 24;
+const FOLDER_FADE_MS = 300;
 
 export const Mode = {BOARD: 'board', SEARCH: 'search', FOLDER: 'folder', EDIT: 'edit'};
 
@@ -87,19 +92,30 @@ export const Layer = GObject.registerClass({
         this._scrimParts.forEach(p => this._scrim.add_child(p));
         this.add_child(this._scrim);
 
-        this.board = new Board(this, model, settings);
-        this.add_child(this.board);
+        // board and header, so one blur covers both behind a folder
+        this._content = new St.Widget({layout_manager: new Clutter.FixedLayout()});
+        this.add_child(this._content);
 
-        // catches clicks outside the results panel or folder while those
-        // are shown; clicks fall through to the layer (close / step back)
-        this._shield = new St.Widget({reactive: true, visible: false});
-        this.add_child(this._shield);
+        this.board = new Board(this, model, settings);
+        this._content.add_child(this.board);
+
+        // while searching, takes clicks meant for the faded board; they
+        // fall through to the layer, which closes
+        this._searchShield = new St.Widget({reactive: true, visible: false});
+        this._content.add_child(this._searchShield);
 
         this.pill = new SearchPill();
-        this.add_child(this.pill);
+        this._content.add_child(this.pill);
+
+        // dims and catches clicks behind an open folder; a click closes it
+        this._shield = new St.Widget({style_class: 'hs-shield', reactive: true, visible: false});
+        this.add_child(this._shield);
 
         this.results = new ResultsPanel(this);
         this.add_child(this.results);
+
+        this.folderView = new FolderView(this);
+        this.add_child(this.folderView);
 
         this.tooltip = new Tooltip();
         this.add_child(this.tooltip);
@@ -177,7 +193,86 @@ export const Layer = GObject.registerClass({
         this.close();
     }
 
-    openFolder(_id, _actor) {
+    openFolder(id, actor) {
+        if (this.mode !== Mode.BOARD || this.folderView.isOpen)
+            return;
+        const folder = this._model.folder(id);
+        const tile = this.board.tiles.get(id);
+        if (!folder || !tile)
+            return;
+        this.mode = Mode.FOLDER;
+        this._folderOpener = actor?.kind ? actor : tile.slots[tile.slots.length - 1] ?? null;
+        this._folderTile = tile;
+        this.tooltip.showFor(null);
+        this._setSelected(null);
+
+        this._shield.show();
+        this._shield.opacity = 0;
+        this._shield.ease({opacity: 255, duration: FOLDER_FADE_MS});
+        if (!this._content.get_effect('hs-fblur')) {
+            this._content.add_effect_with_name('hs-fblur', new Shell.BlurEffect({
+                mode: Shell.BlurMode.ACTOR, radius: 0, brightness: 1,
+            }));
+        }
+        this._content.ease_property('@effects.hs-fblur.radius', FOLDER_BLUR_RADIUS, {duration: FOLDER_FADE_MS});
+
+        const from = this._tileRect(tile);
+        tile.opacity = 0;
+        this.folderView.open(folder, from, {
+            width: this.width,
+            height: this.height,
+            top: this.grid.workArea.y * (this.grid.sf ?? 1) + 24,
+        }, {focusApp: this._model.focusApp});
+        const first = this.folderView.items[0];
+        if (first) {
+            first.grab_key_focus();
+            this._setSelected(first);
+        }
+    }
+
+    closeFolder({instant = false} = {}) {
+        if (this.mode !== Mode.FOLDER)
+            return;
+        this.mode = Mode.BOARD;
+        const tile = this._folderTile;
+        this._folderTile = null;
+        this._setSelected(null);
+        const to = tile?.get_stage() ? this._tileRect(tile) : null;
+        this.folderView.close(to, {
+            instant,
+            onDone: () => {
+                if (tile)
+                    tile.opacity = 255;
+            },
+        });
+        const duration = instant ? 0 : FOLDER_FADE_MS;
+        this._shield.ease({opacity: 0, duration, onStopped: () => {
+            if (this.mode !== Mode.FOLDER)
+                this._shield.hide();
+        }});
+        if (this._content.get_effect('hs-fblur')) {
+            this._content.ease_property('@effects.hs-fblur.radius', 0, {
+                duration,
+                onStopped: () => {
+                    if (this.mode !== Mode.FOLDER)
+                        this._content.remove_effect_by_name('hs-fblur');
+                },
+            });
+        }
+        const opener = this._folderOpener;
+        this._folderOpener = null;
+        if (opener?.get_stage()) {
+            opener.grab_key_focus();
+            this._setSelected(opener);
+        } else {
+            this.grab_key_focus();
+        }
+    }
+
+    _tileRect(tile) {
+        const [lx, ly] = this.get_transformed_position();
+        const e = tile.get_transformed_extents();
+        return {x: e.get_x() - lx, y: e.get_y() - ly, width: e.get_width(), height: e.get_height()};
     }
 
     activateResult(item, {newWindow = false} = {}) {
@@ -227,6 +322,9 @@ export const Layer = GObject.registerClass({
         this._scrimParts[2].set_position(0, h2);
         this._scrimParts[2].set_size(m.width, m.height - h2);
         this._shield.set_size(m.width, m.height);
+        this._searchShield.set_size(m.width, m.height);
+        this._content.set_size(m.width, m.height);
+        this.folderView.set_size(m.width, m.height);
 
         this.board.set_position(0, 0);
         this.board.setGrid(grid, m.width, m.height);
@@ -330,8 +428,12 @@ export const Layer = GObject.registerClass({
 
     // back to a clean board for the next open
     _resetState() {
+        if (this.mode === Mode.FOLDER)
+            this.closeFolder({instant: true});
         this.pill.text = '';
         this._leaveSearch(true);
+        this._shield.remove_all_transitions();
+        this._shield.hide();
         this._setSelected(null);
         this.tooltip.showFor(null);
         this.board.setPage(0, false);
@@ -353,8 +455,7 @@ export const Layer = GObject.registerClass({
         this.mode = Mode.SEARCH;
         this.tooltip.showFor(null);
         this.pill.setSearching(true);
-        this._shield.show();
-        this.set_child_above_sibling(this._shield, this.board);
+        this._searchShield.show();
         if (!this.board.get_effect('hs-blur')) {
             this.board.add_effect_with_name('hs-blur', new Shell.BlurEffect({
                 mode: Shell.BlurMode.ACTOR,
@@ -381,7 +482,7 @@ export const Layer = GObject.registerClass({
             this.mode = Mode.BOARD;
         this.pill.setSearching(false);
         this.pill.setHint('', '');
-        this._shield.hide();
+        this._searchShield.hide();
         this._engine.reset();
         this.results.clear();
         this.results.remove_all_transitions();
@@ -455,7 +556,7 @@ export const Layer = GObject.registerClass({
 
     _startSearch(event) {
         if (this.mode === Mode.FOLDER)
-            this.closeFolder?.({instant: false});
+            this.closeFolder();
         const text = this.pill.entry.clutter_text;
         text.grab_key_focus();
         text.event(event, false);
@@ -532,6 +633,8 @@ export const Layer = GObject.registerClass({
             const p = this.board.page;
             return [p - 1, p, p + 1].flatMap(i => this.board.focusables(i));
         }
+        if (this.mode === Mode.FOLDER)
+            return this.folderView.items;
         return [];
     }
 
@@ -574,6 +677,8 @@ export const Layer = GObject.registerClass({
             this.board.setPage(tile.rect.page);
         item.grab_key_focus();
         this._setSelected(item);
+        if (this.mode === Mode.FOLDER)
+            ensureActorVisibleInScrollView(this.folderView._scroll, item);
     }
 
     // ---- input ----
@@ -649,11 +754,36 @@ export const Layer = GObject.registerClass({
                 return Clutter.EVENT_STOP;
             }
         }
+
+        if (this.mode === Mode.FOLDER) {
+            if (dir) {
+                this._move(...dir);
+                return Clutter.EVENT_STOP;
+            }
+            if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
+                this._tab(sym === Clutter.KEY_ISO_Left_Tab || shift);
+                return Clutter.EVENT_STOP;
+            }
+            if ((sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) && ctrl &&
+                this._selected?.kind === 'app') {
+                this.activateApp(this._selected.app, this._selected, {newWindow: true});
+                return Clutter.EVENT_STOP;
+            }
+            // typing inside a folder leaves it and searches everything
+            if (isPrintable(event)) {
+                this._startSearch(event);
+                return Clutter.EVENT_STOP;
+            }
+        }
         return Clutter.EVENT_PROPAGATE;
     }
 
     // Esc: menu, then edit mode, then folder, then search, then close.
     _stepBack() {
+        if (this.mode === Mode.FOLDER) {
+            this.closeFolder();
+            return;
+        }
         if (this.mode === Mode.SEARCH) {
             this.pill.text = '';
             this._kbInResults = false;
@@ -665,8 +795,8 @@ export const Layer = GObject.registerClass({
     vfunc_button_release_event(event) {
         if (event.get_button() !== Clutter.BUTTON_PRIMARY)
             return Clutter.EVENT_PROPAGATE;
-        if (this.mode === Mode.SEARCH && this._shield.visible) {
-            this.close();
+        if (this.mode === Mode.FOLDER) {
+            this.closeFolder();
             return Clutter.EVENT_STOP;
         }
         this.close();

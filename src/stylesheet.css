@@ -129,6 +129,27 @@
 .hs-other-source { font-size: 12.5px; }
 .hs-none { padding: 22px 18px; font-size: 15px; }
 
+/* ---- folder view ---- */
+.hs-shield { background-color: rgba(12, 12, 20, 0.42); }
+.hs-folder {
+  border-radius: 32px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+}
+.hs-folder-title { spacing: 10px; }
+.hs-folder-title-name { font-size: 24px; font-weight: 700; }
+.hs-folder-title-count { font-size: 14px; font-weight: 500; padding-bottom: 3px; }
+.hs-folder-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  padding: 0;
+}
+.hs-folder-item { border-radius: 24px; }
+.hs-folder-item-box { spacing: 13px; }
+.hs-folder-name { font-size: 14px; font-weight: 600; max-width: 150px; text-align: center; }
+
 /* ---- tooltip ---- */
 .hs-tooltip {
   padding: 6px 11px;
@@ -185,6 +206,13 @@
 .hs-dark .hs-other { background-color: rgba(255, 255, 255, 0.075); }
 .hs-dark .hs-result:hover,
 .hs-dark .hs-other:hover { background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-folder { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.hs-dark .hs-folder-title-name,
+.hs-dark .hs-folder-name { color: #eff1f5; }
+.hs-dark .hs-folder-title-count,
+.hs-dark .hs-folder-close { color: rgba(239, 241, 245, 0.66); }
+.hs-dark .hs-folder-close:hover { color: #eff1f5; background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-folder-item:hover { background-color: rgba(255, 255, 255, 0.075); }
 .hs-dark .hs-dot { background-color: rgba(255, 255, 255, 0.35); }
 .hs-dark .hs-dot:checked { background-color: #eff1f5; }
 
@@ -223,5 +251,12 @@
 .hs-light .hs-other { background-color: rgba(30, 30, 46, 0.065); }
 .hs-light .hs-result:hover,
 .hs-light .hs-other:hover { background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-folder { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.hs-light .hs-folder-title-name,
+.hs-light .hs-folder-name { color: #1e1e2e; }
+.hs-light .hs-folder-title-count,
+.hs-light .hs-folder-close { color: rgba(30, 30, 46, 0.64); }
+.hs-light .hs-folder-close:hover { color: #1e1e2e; background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-folder-item:hover { background-color: rgba(30, 30, 46, 0.065); }
 .hs-light .hs-dot { background-color: rgba(30, 30, 46, 0.30); }
 .hs-light .hs-dot:checked { background-color: #1e1e2e; }
