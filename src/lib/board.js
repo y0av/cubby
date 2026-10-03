@@ -51,7 +51,12 @@ export const Board = GObject.registerClass({
                 this._updateRunning(oldApp);
                 this._updateRunning(newApp);
             }, this);
-        this._settings.connectObject('changed::show-app-names', () => this.relayout(true), this);
+        this._settings.connectObject('changed::show-app-names', () => this.relayout(true),
+            // a reset from the preferences window
+            'changed::layouts', () => {
+                if (!this._writing)
+                    this._resolve();
+            }, this);
         this.connect('destroy', () => {
             this._model.disconnectObject(this);
             this._settings.disconnectObject(this);
@@ -93,22 +98,29 @@ export const Board = GObject.registerClass({
         const folders = this._model.foldersByUsage();
         const stored = this._stored();
         const {tiles, source} = L.resolveLayout(stored, folders, cols, rows);
-        if (source === 'generated' && folders.length) {
-            this._settings.set_string('layouts',
-                JSON.stringify(L.storeLayout(stored, cols, rows, tiles, {generated: true})));
-        }
+        if (source === 'generated' && folders.length)
+            this._write(L.storeLayout(stored, cols, rows, tiles, {generated: true}));
         this._apply(tiles);
     }
 
     /** Saves the current layout for this grid (after an edit). */
     save(tiles = this.rects) {
         const {cols, rows} = this.grid;
-        this._settings.set_string('layouts', JSON.stringify(L.storeLayout(this._stored(), cols, rows, tiles)));
+        this._write(L.storeLayout(this._stored(), cols, rows, tiles));
+    }
+
+    _write(stored) {
+        this._writing = true;
+        try {
+            this._settings.set_string('layouts', JSON.stringify(stored));
+        } finally {
+            this._writing = false;
+        }
     }
 
     /** Forgets every stored layout and generates a new one. */
     reset() {
-        this._settings.set_string('layouts', '{}');
+        this._write({});
         this._resolve();
     }
 

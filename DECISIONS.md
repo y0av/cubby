@@ -110,3 +110,9 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 - **Check:** `tools/contrast.py` reproduces the scrim and halo and composites every text style over the 99th-percentile brightest (dark style) or 1st-percentile darkest (light style) backdrop in the board band. Results for the four sketch wallpapers and the author's current Bing wallpaper are in `shots/m7-contrast.txt`: every row passes.
 - **12-hour clock:** the time drops the leading zero and shows AM/PM as a smaller label beside it.
 - **Weather** is not included in v1 (possible follow-up: the shell's own `misc/weather.js` client).
+
+## Preferences (M8)
+
+- `Adw.SwitchRow`s bound to the settings; the custom accent is a switch plus a `Gtk.ColorDialogButton` (switching it on stores the button's colour, off stores an empty string so the system accent applies again). The author's mauve `#cba6f7` is the button's starting colour.
+- Reset layout in the preferences asks for confirmation with an `Adw.AlertDialog`, unlike the menu item, because the preferences window is easy to reach by accident and slow to undo. The board listens for `layouts` changes it did not make itself and regenerates.
+- Checked by opening the window inside the nested shell (`shots/m8-prefs.png`).
