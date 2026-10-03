@@ -165,8 +165,14 @@ export const Layer = GObject.registerClass({
         uiGroup.add_child(this);
         uiGroup.set_child_above_sibling(this, global.window_group);
 
-        this._wallpaper = new WallpaperWatcher();
-        this._wallpaper.connectObject('changed', (_w, lum) => this._applyScrim(lum), this);
+        this._wallpaper = new WallpaperWatcher(() => {
+            const m = this.monitor;
+            return m ? m.width / m.height : 16 / 10;
+        });
+        this._wallpaper.connectObject('changed', (_w, lum) => {
+            this._applyScrim(lum);
+            this.board.setFrostSample(this._wallpaper.sample);
+        }, this);
 
         this._monitorIndex = Main.layoutManager.primaryIndex;
         this._syncTheme();
@@ -189,6 +195,7 @@ export const Layer = GObject.registerClass({
             this.close({instant: true});
             this._monitorIndex = Main.layoutManager.primaryIndex;
             this._syncGeometry();
+            this._wallpaper.refresh();
         }, this);
         global.display.connectObject('workareas-changed', () => this._syncGeometry(),
             'notify::focus-window', () => {

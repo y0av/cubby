@@ -6,6 +6,7 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import {Frost} from './frost.js';
 import {Tile, drawDashed} from './tile.js';
 import * as L from './layoutEngine.js';
 
@@ -40,6 +41,9 @@ export const Board = GObject.registerClass({
         this.editing = false;
         this._placeholders = null;
         this._ghost = null;
+        this._frost = null;
+        this._frostSample = null;
+        this.connect('notify::mapped', () => this._syncFrostTracking());
 
         this._dots = new St.BoxLayout({style_class: 'hs-dots', reactive: true});
         this.add_child(this._dots);
@@ -57,7 +61,9 @@ export const Board = GObject.registerClass({
                 if (!this._writing)
                     this._resolve();
             }, this);
+        this._settings.connectObject('changed::frosted-glass', () => this._syncFrostEnabled(), this);
         this.connect('destroy', () => {
+            global.stage.disconnectObject(this);
             this._model.disconnectObject(this);
             this._settings.disconnectObject(this);
         });
@@ -80,7 +86,63 @@ export const Board = GObject.registerClass({
         this.grid = grid;
         this._monW = monitorWidth;
         this.set_size(monitorWidth, monitorHeight);
+        this._frost?.set_size(monitorWidth, monitorHeight);
         this._resolve();
+    }
+
+    // ---- frosted glass ----
+
+    /** The wallpaper sample changed (or became null for a plain colour). */
+    setFrostSample(sample) {
+        this._frostSample = sample;
+        this._frost?.setSample(sample);
+        this._syncFrostEnabled();
+    }
+
+    _syncFrostEnabled() {
+        const on = this._settings.get_boolean('frosted-glass') && !!this._frostSample;
+        if (on && !this._frost) {
+            this._frost = new Frost();
+            this.insert_child_below(this._frost, null);
+            this._frost.set_size(this.width, this.height);
+            this._frost.setSample(this._frostSample);
+        } else if (!on && this._frost) {
+            this._frost.destroy();
+            this._frost = null;
+        }
+        if (this._frost) {
+            this._frost.show();
+            this._frost.remove_transition('opacity');
+            this._frost.ease({opacity: this.editing ? 0 : 255, duration: 200});
+        }
+        this._syncFrostTracking();
+    }
+
+    // follow the tiles on every frame that is drawn while the board shows
+    _syncFrostTracking() {
+        global.stage.disconnectObject(this);
+        if (this._frost && this.mapped) {
+            global.stage.connectObject('before-update', () => this._syncFrost(), this);
+            this._syncFrost();
+        }
+    }
+
+    _syncFrost() {
+        if (!this._frost)
+            return;
+        const [bx, by] = this.get_transformed_position();
+        const rects = [];
+        for (const tile of this.tiles.values()) {
+            if (!tile.visible || tile.opacity === 0)
+                continue;
+            const e = tile.get_transformed_extents();
+            const x = e.get_x() - bx, y = e.get_y() - by;
+            if (x + e.get_width() < 0 || x > this.width)
+                continue;
+            rects.push({x, y, width: e.get_width(), height: e.get_height(), alpha: tile.opacity / 255});
+        }
+        const scale = [...this.tiles.values()][0]?.scale_x ?? 1;
+        this._frost.setRects(rects, 32 * scale * (this.grid?.sf ?? 1));
     }
 
     _stored() {
@@ -179,6 +241,8 @@ export const Board = GObject.registerClass({
 
     setEditing(on) {
         this.editing = on;
+        // tiles rotate while wiggling; the mask does not, so fade it out
+        this._frost?.ease({opacity: on ? 0 : 255, duration: 200});
         if (on)
             this.add_style_class_name('hs-board-editing');
         else

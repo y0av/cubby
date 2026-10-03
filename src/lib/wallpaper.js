@@ -1,14 +1,15 @@
-// Mean luminance of the current wallpaper, sampled once per wallpaper change
-// from a small downscaled decode (asynchronous, off the main loop's
-// critical path). Drives the scrim strength and the clock colour.
+// A small sample of the current wallpaper, decoded once per wallpaper change
+// (asynchronously) and cropped to the monitor's shape the way the "zoom"
+// option shows it. Its mean luminance drives the scrim and the clock
+// colour; the sample itself feeds the clock halo and the frosted glass.
 
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
-const SAMPLE_W = 48;
-const SAMPLE_H = 30;
+const DECODE_W = 192;
+export const SAMPLE_W = 96;
 export const DEFAULT_LUMINANCE = 0.3;
 
 /** Mean of 0.2126R + 0.7152G + 0.0722B over pixels, 0..1 (the sketch's adaptScrim). */
@@ -36,8 +37,10 @@ function colorLuminance(hex) {
 
 /** Emits 'changed' (luminance) when the wallpaper or colour scheme changes. */
 export class WallpaperWatcher extends Signals.EventEmitter {
-    constructor() {
+    /** @param {Function} aspect - returns the monitor's width / height */
+    constructor(aspect = () => 16 / 10) {
         super();
+        this._aspect = aspect;
         this.luminance = DEFAULT_LUMINANCE;
         this._bg = new Gio.Settings({schema_id: 'org.gnome.desktop.background'});
         this._iface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
@@ -83,6 +86,28 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         return {brightest, darkest};
     }
 
+    // centre crop to the monitor's aspect (what "zoom" shows), then shrink
+    _cropToMonitor(pb) {
+        const A = this._aspect();
+        let w = pb.get_width(), h = pb.get_height(), x = 0, y = 0;
+        if (w / h > A) {
+            const cw = Math.round(h * A);
+            x = Math.floor((w - cw) / 2);
+            w = cw;
+        } else {
+            const ch = Math.round(w / A);
+            y = Math.floor((h - ch) / 2);
+            h = ch;
+        }
+        const sub = pb.new_subpixbuf(x, y, Math.max(1, w), Math.max(1, h));
+        return sub.scale_simple(SAMPLE_W, Math.max(1, Math.round(SAMPLE_W / A)), GdkPixbuf.InterpType.BILINEAR);
+    }
+
+    /** Re-reads the wallpaper (the monitor's shape changed). */
+    refresh() {
+        this._update();
+    }
+
     _uri() {
         const dark = this._iface.get_string('color-scheme') === 'prefer-dark';
         const key = dark ? 'picture-uri-dark' : 'picture-uri';
@@ -110,8 +135,8 @@ export class WallpaperWatcher extends Signals.EventEmitter {
                         }
                     });
                 });
-                const pixbuf = await new Promise((resolve, reject) => {
-                    GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, SAMPLE_W, SAMPLE_H, false,
+                const decoded = await new Promise((resolve, reject) => {
+                    GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, DECODE_W, -1, true,
                         cancellable, (_s, res) => {
                             try {
                                 resolve(GdkPixbuf.Pixbuf.new_from_stream_finish(res));
@@ -121,6 +146,7 @@ export class WallpaperWatcher extends Signals.EventEmitter {
                         });
                 });
                 stream.close_async(0, null, null);
+                const pixbuf = this._cropToMonitor(decoded);
                 lum = meanLuminance(pixbuf);
                 sample = {
                     data: pixbuf.get_pixels(),
