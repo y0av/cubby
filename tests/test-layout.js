@@ -119,8 +119,8 @@ for (const [name, counts] of Object.entries(sets)) {
         ok(holes.length === 0, `${name} ${cols}x${rows}: no holes, got ${JSON.stringify(holes)}`);
         for (const f of folders) {
             const r = t[f.id];
-            // at most one empty slot, and only where it closes a hole
-            ok(r.w * r.h <= Math.max(2, f.count + 1),
+            // at most two empty slots, and only where that closes a hole
+            ok(r.w * r.h <= Math.max(2, f.count + 2),
                 `${name} ${cols}x${rows}: ${f.id} (${f.count} apps) not oversized at ${r.w}x${r.h}`);
         }
         const cells = folders.reduce((a, f) => a + t[f.id].w * t[f.id].h, 0);

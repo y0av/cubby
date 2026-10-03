@@ -290,9 +290,11 @@ export function fillHoles(tiles, cols, rows, counts = {}) {
                 }
                 occ.put(lastId, lt.page, lt.x, lt.y, lt.w, lt.h);
             }
-            // last resort: a tile with a spare slot beats a hole in the grid
+            // last resort: a tile with a spare slot beats a hole in the grid;
+            // pick the growth that leaves the fewest empty slots
             if (cands.length) {
-                cands.sort((a, b) => a.r.w * a.r.h - b.r.w * b.r.h);
+                const waste = c => c.r.w * c.r.h - (counts[c.id] ?? 0);
+                cands.sort((a, b) => waste(a) - waste(b));
                 tiles[cands[0].id] = cands[0].r;
                 fixed = true;
                 break;
@@ -354,9 +356,9 @@ export function planSizes(folders, cols, rows) {
             const [w, h] = ladder[next];
             if (w > cols || h > rows || w * h > folders[i].count)
                 continue;
-            // keep the ranking visible: only the most used folder can be
-            // 3x2, and nobody outgrows a folder ranked above them
-            if (next < (i === 0 ? 0 : 1) || (i > 0 && next < want[i - 1]))
+            // only the most used folder can be 3x2; growth goes in rank
+            // order, so better ranked folders get the space first
+            if (next < (i === 0 ? 0 : 1))
                 continue;
             if (cells() - area(want[i]) + w * h > capacity)
                 continue;

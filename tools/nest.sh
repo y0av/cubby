@@ -171,7 +171,7 @@ case $cmd in
     eval) do_eval "$1";;
     shot) shot "$1";;
     scale) scale "$1";;
-    gset) nest_env; on_bus gsettings "$@";;
+    gset) nest_env; GSETTINGS_SCHEMA_DIR="$NEST/data/gnome-shell/extensions/$UUID/schemas" on_bus gsettings "$@";;
     log) cat "$NEST/shell.log";;
     *) sed -n 2,16p "$0"; exit 2;;
 esac

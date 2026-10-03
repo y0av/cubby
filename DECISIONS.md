@@ -81,3 +81,10 @@ GNOME Shell 50's St supports `-st-accent-color`, `st-mix()` and `st-transparenti
 - The panel grows from the tile's on-screen rect with `EASE_OUT_QUART` over 420ms; the sketch's slight overshoot curve has no Clutter equivalent and `EASE_OUT_BACK` overshoots far more. The tile is hidden while its folder is open and comes back when the panel has shrunk into it.
 - Folders taller than the screen scroll inside the panel (`St.ScrollView` with an `St.Viewport`).
 - Typing inside a folder closes it and searches everything; Esc returns focus to the slot that opened the folder.
+
+## Keyboard (M5)
+
+- Arrow navigation scores every focusable on the current page and its neighbours (`pickNeighbor` in `layoutEngine.js`: distance along the arrow plus 2.2× the sideways offset, between centres). Items on the next page lie one monitor width to the right in the board's own coordinates, so an arrow past the last column moves to the next page with no special case.
+- On the board and in folders, real Clutter key focus moves with the selection, so screen readers announce the slot's accessible name ("Text Editor, running, 2 windows"; "System, 11 apps, 6 more"). In search, focus stays in the entry and the selection is virtual (see M3).
+- The selection ring shows only after a navigation key, like the sketch; moving the mouse hides it. The tooltip shows for the selected or hovered overflow preview, and for every icon when names are off.
+- Generated sizes: the rule "nobody outgrows a folder ranked above them" let a small top folder (3 apps, so 2×1) cap everyone below it at 2×1 and left the bottom row empty. Replaced with per-rank caps (only the top folder may be 3×2, the rest up to 2×2), with growth handed out in rank order. A last-resort hole fill may now leave up to two empty slots in one tile, choosing the tile that wastes least.
