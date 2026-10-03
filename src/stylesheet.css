@@ -3,6 +3,19 @@
    edit outlines, Done) are styled from JS because the accent may be a
    custom hex. Sizes that depend on the grid unit are set from JS. */
 
+/* ---- hover and selection fade instead of snapping ---- */
+.hs-slot,
+.hs-chip,
+.hs-pill,
+.hs-result,
+.hs-other,
+.hs-folder-item,
+.hs-folder-close,
+.hs-folder-sort,
+.hs-done,
+.hs-coach-ok,
+.hs-dot { transition-duration: 120ms; }
+
 /* ---- shared shapes ---- */
 .hs-tile {
   border-radius: 32px;

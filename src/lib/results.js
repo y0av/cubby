@@ -13,7 +13,7 @@ import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {Pips, runningText} from './tile.js';
+import {Pips, addPressFeedback, runningText} from './tile.js';
 
 const APP_COLS = 5;
 const RESULT_ICON = 56;
@@ -130,6 +130,7 @@ class AppResult extends St.Button {
         this._cap.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         texts.add_child(this._cap);
         this.set_child(box);
+        addPressFeedback(this);
         this.setCaption(caption, live, focusApp);
     }
 
@@ -181,6 +182,7 @@ class OtherResult extends St.Button {
             }));
         }
         this.set_child(box);
+        addPressFeedback(this);
         this.accessible_name = [result.name, result.source].filter(Boolean).join(', ');
     }
 });

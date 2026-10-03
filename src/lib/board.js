@@ -250,22 +250,32 @@ export const Board = GObject.registerClass({
             this.add_style_class_name('hs-board-editing');
         else
             this.remove_style_class_name('hs-board-editing');
-        if (on) {
-            this._placeholders = new St.DrawingArea({reactive: false});
+        if (on && !this._placeholders) {
+            this._placeholders = new St.DrawingArea({reactive: false, opacity: 0});
             this._placeholders.connect('repaint', a => this._drawPlaceholders(a));
             this._strip.insert_child_below(this._placeholders, null);
             this._ghost = new St.Widget({style_class: 'hs-ghost', reactive: false, visible: false});
             this._strip.add_child(this._ghost);
+        }
+        this._ghost?.hide();
+        const placeholders = this._placeholders;
+        placeholders?.remove_all_transitions();
+        if (on) {
+            placeholders.show();
+            placeholders.ease({opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
         } else {
-            this._placeholders?.destroy();
-            this._ghost?.destroy();
-            this._placeholders = this._ghost = null;
+            placeholders?.ease({
+                opacity: 0,
+                duration: 150,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                onComplete: () => placeholders.hide(),
+            });
         }
         this.relayout();
     }
 
     _syncPlaceholders() {
-        if (!this._placeholders)
+        if (!this._placeholders || !this.editing)
             return;
         const g = this.grid;
         this._placeholders.set_position(0, g.boardY - 2);
@@ -301,7 +311,7 @@ export const Board = GObject.registerClass({
     }
 
     showGhost(rect, ok) {
-        if (!this._ghost)
+        if (!this.editing)
             return;
         const r = this.pixelRect(rect);
         const first = !this._ghost.visible;

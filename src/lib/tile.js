@@ -25,6 +25,8 @@ const OUTLINE_OFFSET = 5;
 const WIGGLE_DEG = 0.35;
 const WIGGLE_MS = 1100;
 const MOVE_MS = 380;
+const DECOR_FADE_MS = 180;
+const PRESS_SCALE = 0.95;
 
 function roundedRect(cr, x, y, w, h, r) {
     r = Math.min(r, w / 2, h / 2);
@@ -56,6 +58,20 @@ export function drawDashed(area, rects, {rgba, fill = null, radius = 32, width =
 export function hexRgba(hex, a) {
     const n = parseInt(hex.replace('#', ''), 16);
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, a];
+}
+
+/** Shrinks a button a little while it is held down. */
+export function addPressFeedback(button) {
+    button.set_pivot_point(0.5, 0.5);
+    button.connect('notify::pressed', () => {
+        const scale = button.pressed ? PRESS_SCALE : 1;
+        button.ease({
+            scale_x: scale,
+            scale_y: scale,
+            duration: button.pressed ? 90 : 180,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+    });
 }
 
 /** Accessible description of an app's running state. */
@@ -182,6 +198,7 @@ class AppSlot extends St.Button {
             box.add_child(label);
         }
         this.set_child(box);
+        addPressFeedback(this);
         this.connect('clicked', () => tile.controller.activateApp(app, this));
         this.connect('notify::hover', () => tile.controller.onSlotHover?.(this));
     }
@@ -252,6 +269,7 @@ class MoreSlot extends St.Button {
             }));
         }
         this.set_child(mini);
+        addPressFeedback(this);
         this._badge = badge;
         this.connect('clicked', () => tile.controller.openFolder(tile.folder.id, this));
         this.connect('notify::hover', () => tile.controller.onSlotHover?.(this));
@@ -357,6 +375,11 @@ class Tile extends St.Widget {
         this._grid = grid;
         this._names = names;
         this._build();
+        // resized in edit mode: the new arrangement fades in as the frame moves
+        if (animate) {
+            this._content.opacity = 0;
+            this._content.ease({opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        }
     }
 
     setFolder(folder) {
@@ -440,7 +463,7 @@ class Tile extends St.Widget {
         this.accessible_name = on ? _('%s folder, %d by %d').format(this.folder.name, this.rect.w, this.rect.h) : '';
         if (on) {
             if (!this._outline) {
-                this._outline = new St.DrawingArea({reactive: false});
+                this._outline = new St.DrawingArea({reactive: false, opacity: 0});
                 this._outline.connect('repaint', a => {
                     const [w, h] = a.get_surface_size();
                     drawDashed(a, [{x: 0, y: 0, width: w, height: h}], {
@@ -491,6 +514,9 @@ class Tile extends St.Widget {
             }
             this.syncAccent();
             this._syncDecorations();
+            this._outline.show();
+            this._outline.remove_all_transitions();
+            this._outline.ease({opacity: 255, duration: DECOR_FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
             this.remove_transition('rotation-angle-z');
             if (wiggle) {
                 this.rotation_angle_z = -WIGGLE_DEG;
@@ -504,12 +530,16 @@ class Tile extends St.Widget {
                 });
             }
         } else {
+            // settle from wherever the wiggle was; the decorations are kept
+            // for next time
             this.remove_transition('rotation-angle-z');
-            this.rotation_angle_z = 0;
-            this._outline?.destroy();
-            this._grip?.destroy();
-            this.resizeHandle?.destroy();
-            this._outline = this._grip = this.resizeHandle = this._resizeGlyph = null;
+            this.ease({rotation_angle_z: 0, duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+            this._outline?.ease({
+                opacity: 0,
+                duration: DECOR_FADE_MS,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                onComplete: () => this._outline.hide(),
+            });
         }
         this._syncHandles();
     }

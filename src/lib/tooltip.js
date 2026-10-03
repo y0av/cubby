@@ -37,6 +37,8 @@ class Tooltip extends St.BoxLayout {
         this._main.text = main;
         this._sub.text = sub ?? '';
         this._sub.visible = !!sub;
+        if (!this.visible)
+            this.opacity = 0;
         this.show();
         const parent = this.get_parent();
         const [px, py] = parent.get_transformed_position();

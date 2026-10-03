@@ -14,7 +14,7 @@ import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {Pips, runningText} from './tile.js';
+import {Pips, addPressFeedback, runningText} from './tile.js';
 
 const PITCH_X = 166;
 const PITCH_Y = 158;
@@ -24,7 +24,11 @@ const ICON = 72;
 const PAD_X = 40;
 const TOP = 86;
 const BOTTOM = 34;
-const GROW_MS = 420;
+const GROW_MS = 400;
+const SHRINK_MS = 320;
+// the shrink is nearly done this early; the panel fades into the tile from here
+const LAND_MS = 90;
+const PANEL_FADE_MS = 170;
 const ITEM_STAGGER_MS = 18;
 const REFLOW_MS = 200;
 const AUTOSCROLL_EDGE = 48;
@@ -81,6 +85,7 @@ class FolderItem extends St.Button {
         name.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         box.add_child(name);
         this.set_child(box);
+        addPressFeedback(this);
         this.connect('clicked', () => view.controller.activateApp(app, this));
     }
 
@@ -300,18 +305,20 @@ class FolderView extends St.Widget {
         this._inner.remove_all_transitions();
         this._panel.set_position(from.x, from.y);
         this._panel.set_size(from.width, from.height);
+        this._panel.opacity = 0;
         this._inner.opacity = 0;
         this._panel.ease({
             x: to.x, y: to.y, width: to.width, height: to.height,
             duration: GROW_MS,
             mode: Clutter.AnimationMode.EASE_OUT_QUART,
         });
-        this._inner.ease({opacity: 255, delay: 120, duration: 200});
+        this._panel.ease({opacity: 255, duration: PANEL_FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        this._inner.ease({opacity: 255, delay: 60, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
         this.items.forEach((item, i) => {
             item.remove_all_transitions();
             item.opacity = 0;
             item.set_scale(0.8, 0.8);
-            const delay = 100 + Math.min(i, 24) * ITEM_STAGGER_MS;
+            const delay = 60 + Math.min(i, 24) * ITEM_STAGGER_MS;
             // opacity must not overshoot: it would wrap past 255 and blink
             item.ease({opacity: 255, delay, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
             item.ease({
@@ -437,10 +444,13 @@ class FolderView extends St.Widget {
         return this._panel;
     }
 
-    /** Shrinks back into `to` (the tile's current rect), then hides. */
-    close(to, {instant = false, onDone = null} = {}) {
+    /**
+     * Shrinks back into `to` (the tile's current rect), fading out as it
+     * lands, then hides. Returns when the fade starts, in ms.
+     */
+    close(to, {instant = false} = {}) {
         if (!this.folder)
-            return;
+            return 0;
         if (this._drag)
             this.endDrag(false);
         this.folder = null;
@@ -448,20 +458,26 @@ class FolderView extends St.Widget {
         to ??= this._from;
         this._inner.remove_all_transitions();
         this._panel.remove_all_transitions();
-        const done = () => {
-            this.hide();
-            onDone?.();
-        };
         if (instant) {
-            done();
-            return;
+            this.hide();
+            return 0;
         }
-        this._inner.ease({opacity: 0, duration: 120});
+        this._inner.ease({opacity: 0, duration: 80, mode: Clutter.AnimationMode.EASE_IN_QUAD});
         this._panel.ease({
             x: to.x, y: to.y, width: to.width, height: to.height,
-            duration: GROW_MS - 60,
+            duration: SHRINK_MS,
             mode: Clutter.AnimationMode.EASE_OUT_QUART,
-            onStopped: done,
+            onStopped: () => {
+                if (!this.folder)
+                    this.hide();
+            },
         });
+        this._panel.ease({
+            opacity: 0,
+            delay: LAND_MS,
+            duration: PANEL_FADE_MS,
+            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
+        });
+        return LAND_MS;
     }
 });
