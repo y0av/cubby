@@ -1,0 +1,4 @@
+dist/
+*.mo
+schemas/gschemas.compiled
+__pycache__/
