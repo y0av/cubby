@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="homescreen">
+  <schema id="org.gnome.shell.extensions.homescreen" path="/org/gnome/shell/extensions/homescreen/">
+    <key name="show-clock" type="b">
+      <default>false</default>
+      <summary>Show a large clock and the date under the search field</summary>
+    </key>
+    <key name="show-app-names" type="b">
+      <default>true</default>
+      <summary>Show app names under the big icons on tiles</summary>
+    </key>
+    <key name="accent-override" type="s">
+      <default>''</default>
+      <summary>Custom accent colour as #rrggbb; empty follows the system accent</summary>
+    </key>
+    <key name="frosted-glass" type="b">
+      <default>false</default>
+      <summary>Show a blurred copy of the wallpaper inside tiles</summary>
+    </key>
+    <key name="use-stock-grid" type="b">
+      <default>false</default>
+      <summary>Use the stock app grid instead of the home screen</summary>
+    </key>
+    <key name="layouts" type="s">
+      <default>'{}'</default>
+      <summary>Tile layout per grid size, as JSON</summary>
+      <description>Maps "COLSxROWS" to tile rectangles in grid units, keyed by folder id. Written by edit mode.</description>
+    </key>
+    <key name="virtual-groups" type="s">
+      <default>''</default>
+      <summary>Generated groups used when the user has no app folders, as JSON</summary>
+    </key>
+    <key name="known-apps" type="as">
+      <default>[]</default>
+      <summary>App ids seen at the last open, used for the "New" marker</summary>
+    </key>
+    <key name="tip-dismissed" type="b">
+      <default>false</default>
+      <summary>Whether the first-run edit tip was dismissed</summary>
+    </key>
+  </schema>
+</schemalist>

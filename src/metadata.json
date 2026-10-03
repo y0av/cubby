@@ -1,0 +1,9 @@
+{
+  "uuid": "homescreen@y0av.github.io",
+  "name": "Home Screen",
+  "description": "Replaces the Show Apps grid with a home screen of folder tiles you place and size yourself, with search, keyboard navigation and an edit mode.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.homescreen",
+  "gettext-domain": "homescreen",
+  "version-name": "0.1"
+}

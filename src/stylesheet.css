@@ -1,0 +1,9 @@
+/* Home Screen. Light and dark glass are class variants on the layer root
+   (.hs-dark / .hs-light); accent-coloured parts are styled from JS because
+   the accent may be a custom hex. */
+
+.hs-scrim {
+  background-gradient-direction: vertical;
+  background-gradient-start: rgba(12, 12, 20, 0.5);
+  background-gradient-end: rgba(12, 12, 20, 0.1);
+}
