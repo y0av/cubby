@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // The results panel under the search field: apps in a 5-column grid, then
 // settings, files and other provider results as chips.
 

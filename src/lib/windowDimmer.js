@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Fades and slightly shrinks the windows on one monitor while the layer is
 // open. Each window actor gets a pivot chosen so that the per-actor scale
 // matches scaling the whole monitor about one point, which leaves the

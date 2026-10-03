@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // What goes on the board: folders from org.gnome.desktop.app-folders (read
 // only), an "Unsorted" group for the rest, or generated category groups for
 // people who never made folders. Apps inside a group are ordered by usage.

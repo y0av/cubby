@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Search: apps ranked the way the shell ranks them, plus results from the
 // shell's own search providers (built-in and remote), reused from the
 // overview so provider settings, sort order and extension providers apply.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Development only: lets tools/nest.sh drive the nested shell over D-Bus.
 // Turns on unsafe mode (Eval, Screenshot) and exposes globalThis.hsTest with
 // synthetic input and frame timing helpers.

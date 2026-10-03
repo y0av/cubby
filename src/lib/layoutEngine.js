@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Pure layout logic: grid metrics, tile packing, reflow, overflow counts and
 // spatial navigation. No GI imports, so tests/ can run it in plain gjs.
 

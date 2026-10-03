@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Routes every "show the app grid" request to the layer.
 //
 // See DECISIONS.md "Entry points" for where each route lands in the shell

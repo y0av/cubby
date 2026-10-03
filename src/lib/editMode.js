@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Edit mode: drag a tile to move it, drag its round corner handle to
 // resize, or use the keyboard (arrows move, Shift+arrows resize). Every
 // change is snapped to the grid, checked for overlap, and saved.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // The board: folder tiles on the shared cell grid, split into pages when
 // they don't fit, with the layout read from and saved to the extension's
 // settings.

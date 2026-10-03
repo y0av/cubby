@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Small pieces of the layer: the right-click menu, the edit-mode banner and
 // the first-run tip.
 

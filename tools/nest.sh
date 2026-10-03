@@ -62,7 +62,7 @@ pack() {
 }
 
 start() {
-    local sizes=() extra=() wall="" light="" accent=purple nofolders="" napps=0
+    local sizes=() extra=() wall="" light="" accent=purple nofolders="" napps=0 nolocal=""
     while [[ $# -gt 0 ]]; do
         case $1 in
             --dock) extra+=(ubuntu-dock@ubuntu.com);;
@@ -71,6 +71,7 @@ start() {
             --wall) wall=$2; shift;;
             --light) light=1;;
             --no-folders) nofolders=1;;
+            --no-local) nolocal=1;;
             --apps) napps=$2; shift;;
             --accent) accent=$2; shift;;
             *x*) sizes+=("--virtual-monitor" "$1");;
@@ -86,8 +87,8 @@ start() {
     cp "$HOME/.local/share/gnome-shell/application_state" "$NEST/data/gnome-shell/" 2>/dev/null || true
     cp -r "$ROOT/tools/testkit@homescreen.local" "$NEST/data/gnome-shell/extensions/"
     pack
-    mkdir -p "$NEST/data/gnome-shell/extensions/$UUID"
-    (cd "$NEST/data/gnome-shell/extensions/$UUID" && unzip -qo "$ROOT/dist/$UUID.shell-extension.zip" && glib-compile-schemas schemas)
+    # the real install path: extracts and compiles the schema
+    XDG_DATA_HOME="$NEST/data" gnome-extensions install --force "$ROOT/dist/$UUID.shell-extension.zip"
     for e in "${extra[@]}"; do
         # copies, so the user's installed extensions are never touched
         [[ -d $LIVE_EXT/$e ]] && cp -r "$LIVE_EXT/$e" "$NEST/data/gnome-shell/extensions/"
@@ -122,6 +123,8 @@ start() {
     local scheme=prefer-dark; [[ -n $light ]] && scheme=default
 
     nest_env
+    # without the user's own ~/.local/share apps (generic screenshots)
+    [[ -n $nolocal ]] && export XDG_DATA_DIRS="${XDG_DATA_DIRS#$HOME/.local/share:}"
     cat > "$NEST/boot.sh" <<EOF
 set -e
 echo "\$DBUS_SESSION_BUS_ADDRESS" > "$NEST/bus.tmp"

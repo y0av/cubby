@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Tooltip shown above overflow previews (and icons when names are hidden),
 // for the hovered or keyboard-selected item.
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // One folder tile: big icons for the most used apps, and an overflow preview
 // (mini 2x2 plus "+N") in the last slot when they don't all fit. A 1x1 tile
 // is only the preview. The folder name sits on a chip under the tile.
@@ -231,7 +234,7 @@ class MoreSlot extends St.Button {
         mini.add_child(grid);
         this.minis = apps.map((app, i) => {
             const b = new AppIconBox(app, miniSize, {small: true, isNew: tile.controller.isNew(app.id)});
-            const col = apps.length === 3 && i === 2 ? 0.5 : i % 2;
+            const col = (apps.length === 3 && i === 2) || apps.length === 1 ? 0.5 : i % 2;
             b.set_position(pad + col * (miniSize + gap), pad + Math.floor(i / 2) * (miniSize + gap));
             grid.add_child(b);
             return b;

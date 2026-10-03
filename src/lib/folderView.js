@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Folder view: the tile's rectangle grows into a centred glass panel with
 // every app in the folder; closing shrinks it back into the tile.
 

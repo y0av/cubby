@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // The search field: a fixed-width glass pill. While typing, its right side
 // shows the result count, an Enter keycap and what Enter will do.
 

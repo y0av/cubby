@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Home Screen: replaces the Show Apps grid with folder tiles you place and
 // size yourself.
 

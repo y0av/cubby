@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // The full-screen layer that replaces Show Apps on the primary monitor. It
 // owns the scrim, the board, the search field and the overlays, and keeps
 // the state machine (board, search, folder, edit) and keyboard handling.

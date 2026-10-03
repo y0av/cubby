@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Optional large clock and date chip under the search field. Ticks from
 // GnomeDesktop.WallClock and follows the 12/24-hour setting.
 
@@ -43,9 +46,9 @@ class Clock extends St.BoxLayout {
     }
 
     stop() {
+        // dropping the last reference stops the WallClock's own timer
         this._wallClock?.disconnectObject(this);
         this._iface.disconnectObject(this);
-        this._wallClock?.run_dispose();
         this._wallClock = null;
     }
 

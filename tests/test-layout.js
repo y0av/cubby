@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Unit tests for the pure layout logic. Run: gjs -m tests/test-layout.js
 import * as L from '../src/lib/layoutEngine.js';
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // Accent and light/dark style. The accent follows the system accent colour
 // (org.gnome.desktop.interface accent-color, Adwaita values) unless the
 // extension has a custom hex. The style follows color-scheme.

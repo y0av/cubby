@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 y0av
+
 // A small sample of the current wallpaper, decoded once per wallpaper change
 // (asynchronously) and cropped to the monitor's shape the way the "zoom"
 // option shows it. Its mean luminance drives the scrim and the clock
