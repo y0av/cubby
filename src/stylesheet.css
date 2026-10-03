@@ -1,9 +1,152 @@
 /* Home Screen. Light and dark glass are class variants on the layer root
-   (.hs-dark / .hs-light); accent-coloured parts are styled from JS because
-   the accent may be a custom hex. */
+   (.hs-dark / .hs-light). Accent-coloured parts (selection, caret, keycap,
+   edit outlines, Done) are styled from JS because the accent may be a
+   custom hex. Sizes that depend on the grid unit are set from JS. */
 
-.hs-scrim {
-  background-gradient-direction: vertical;
-  background-gradient-start: rgba(12, 12, 20, 0.5);
-  background-gradient-end: rgba(12, 12, 20, 0.1);
+/* ---- shared shapes ---- */
+.hs-tile {
+  border-radius: 32px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
 }
+.hs-slot { border-radius: 24px; }
+.hs-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+}
+.hs-icon { icon-shadow: 0 3px 6px rgba(0, 0, 0, 0.22); }
+.hs-mini { border-radius: 18px; }
+.hs-mini-bare { background-color: transparent; }
+.hs-badge {
+  min-width: 16px;
+  padding: 3px 7px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+}
+.hs-chip {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 14px;
+  font-weight: 600;
+}
+.hs-pips { spacing: 3px; }
+.hs-pip {
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+}
+.hs-pip-focused { width: 22px; }
+.hs-pips-small .hs-pip { width: 8px; height: 3px; border-radius: 2px; }
+.hs-new {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.hs-new-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* ---- search field ---- */
+.hs-pill {
+  height: 60px;
+  border-radius: 30px;
+  padding: 0 22px;
+  spacing: 14px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+}
+.hs-pill-icon { icon-size: 20px; }
+.hs-pill StEntry.hs-entry,
+.hs-pill StEntry.hs-entry:hover,
+.hs-pill StEntry.hs-entry:focus {
+  font-size: 19px;
+  font-weight: 500;
+  background-color: transparent;
+  border-width: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+.hs-pill-hint { spacing: 8px; font-size: 14px; }
+.hs-pill-action { font-weight: 600; }
+.hs-keycap {
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 7px;
+  padding: 2px 7px;
+}
+
+/* ---- page dots ---- */
+.hs-dots { spacing: 10px; }
+.hs-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  padding: 0;
+}
+
+/* ---- dark glass ---- */
+.hs-dark .hs-tile { background-color: rgba(28, 27, 38, 0.74); border-color: rgba(255, 255, 255, 0.10); }
+.hs-dark .hs-name,
+.hs-dark .hs-chip,
+.hs-dark .hs-badge,
+.hs-dark .hs-new,
+.hs-dark .hs-pill-action,
+.hs-dark .hs-keycap,
+.hs-dark .hs-pill StEntry.hs-entry { color: #eff1f5; }
+.hs-dark .hs-slot:hover { background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-mini { background-color: rgba(255, 255, 255, 0.075); }
+.hs-dark .hs-mini-bare { background-color: transparent; }
+.hs-dark .hs-badge,
+.hs-dark .hs-chip,
+.hs-dark .hs-new { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.hs-dark .hs-new-dot { background-color: #eff1f5; border-color: rgba(26, 25, 36, 0.84); }
+.hs-dark .hs-pip { background-color: rgba(255, 255, 255, 0.92); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.hs-dark .hs-pill { background-color: rgba(26, 25, 36, 0.84); border-color: rgba(255, 255, 255, 0.10); }
+.hs-dark .hs-pill-icon { color: rgba(239, 241, 245, 0.75); }
+.hs-dark .hs-pill StEntry.hs-entry StLabel.hint-text,
+.hs-dark .hs-pill-count { color: rgba(239, 241, 245, 0.66); }
+.hs-dark .hs-dot { background-color: rgba(255, 255, 255, 0.35); }
+.hs-dark .hs-dot:checked { background-color: #eff1f5; }
+
+/* ---- light glass ---- */
+.hs-light .hs-tile { background-color: rgba(244, 245, 248, 0.80); border-color: rgba(255, 255, 255, 0.75); }
+.hs-light .hs-name,
+.hs-light .hs-chip,
+.hs-light .hs-badge,
+.hs-light .hs-new,
+.hs-light .hs-pill-action,
+.hs-light .hs-keycap,
+.hs-light .hs-pill StEntry.hs-entry { color: #1e1e2e; }
+.hs-light .hs-slot:hover { background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-mini { background-color: rgba(30, 30, 46, 0.065); }
+.hs-light .hs-mini-bare { background-color: transparent; }
+.hs-light .hs-badge,
+.hs-light .hs-chip,
+.hs-light .hs-new { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.hs-light .hs-new-dot { background-color: #1e1e2e; border-color: rgba(246, 246, 249, 0.90); }
+.hs-light .hs-pip { background-color: rgba(30, 30, 46, 0.85); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.hs-light .hs-pill { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); }
+.hs-light .hs-pill-icon { color: rgba(30, 30, 46, 0.75); }
+.hs-light .hs-pill StEntry.hs-entry StLabel.hint-text,
+.hs-light .hs-pill-count { color: rgba(30, 30, 46, 0.64); }
+.hs-light .hs-dot { background-color: rgba(30, 30, 46, 0.30); }
+.hs-light .hs-dot:checked { background-color: #1e1e2e; }

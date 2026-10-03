@@ -78,7 +78,7 @@ start() {
     done
     stop
     rm -rf "$NEST"
-    mkdir -p "$NEST"/{config,data/gnome-shell/extensions,cache,state,run}
+    mkdir -p "$NEST"/{config,data/gnome-shell/extensions,data/applications,cache,state,run}
     chmod 700 "$NEST/run"
     ln -s "$HOME/.local/share/fonts" "$NEST/data/fonts"
     cp "$HOME/.local/share/gnome-shell/application_state" "$NEST/data/gnome-shell/" 2>/dev/null || true
@@ -101,6 +101,8 @@ start() {
             *) continue;;
         esac
         dconf dump "$d" > "$NEST/$e.ini"
+        # the virtual monitor has no id in panel-positions; use the fallback
+        [[ $e == dash-to-panel@* ]] && sed -i "/^\[\/\]$/a panel-position='TOP'" "$NEST/$e.ini"
         echo "dconf load $d < '$NEST/$e.ini'" >> "$NEST/ext-settings.sh"
     done
     local favs; favs=$(gsettings get org.gnome.shell favorite-apps)
@@ -145,7 +147,7 @@ EOF
     # let the startup animation and extension enable settle
     sleep 2.5
     on_bus gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
-        --method org.gnome.Shell.Eval 'Main.overview.hide(); 1' >/dev/null
+        --method org.gnome.Shell.Eval 'Main.overview.hide(); Main.messageTray.getSources().forEach(s => s.destroy()); hsTest.move(global.stage.width / 2, global.stage.height - 2); 1' >/dev/null
     sleep 0.6
     echo "nested shell up: $size, bus $(bus)"
 }
