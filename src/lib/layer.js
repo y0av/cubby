@@ -15,7 +15,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
-import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
@@ -25,39 +24,22 @@ import {Clock, ClockHalo} from './clock.js';
 import {EditMode} from './editMode.js';
 import {FolderView} from './folderView.js';
 import {PILL_H, computeGrid, pickNeighbor} from './layoutEngine.js';
-import {ResultsPanel, appCaption} from './results.js';
+import {ResultsPanel} from './results.js';
 import {Scrim, scrimAlpha} from './scrim.js';
-import {SearchEngine} from './searchEngine.js';
+import {SearchMode} from './searchMode.js';
 import {SearchPill} from './searchPill.js';
 import {Tooltip} from './tooltip.js';
+import {animateClose, animateLaunch, animateOpen, easeBlur, resetLaunchIcon, settleTile} from './transitions.js';
 import {WallpaperWatcher} from './wallpaper.js';
 import {WindowDimmer} from './windowDimmer.js';
 
 const SCRIM_FADE_MS = 400;
 const WINDOW_DIM_MS = 350;
 const CLOSE_MS = 260;
-// Opening, the tiles rise in a wave from the top-left corner. The wave
-// takes the same time whatever the size of the grid.
-const OPEN_SPREAD_MS = 220;
-const OPEN_TILE_MS = 480;
-const OPEN_FADE_MS = 320;
-const CLOSE_SPREAD_MS = 110;
-const CLOSE_TILE_MS = 220;
-const CLOSE_FADE_MS = 180;
-// launching an app zooms the whole layer towards its icon
-const LAUNCH_MS = 280;
-const LAUNCH_ZOOM = 1.06;
-
-const SEARCH_FADE_MS = 220;
-const SEARCH_BOARD_OPACITY = 36; // about 14%
-const SEARCH_BLUR_RADIUS = 16;
-const RESULTS_FADE_MS = 140;
 const RESULTS_GAP = 12;
-
 const FOLDER_FADE_MS = 300;
 const FOLDER_BLUR_RADIUS = 24;
 const FOLDER_CROSSFADE_MS = 160;
-
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 8;
 const COACH_BOTTOM = 72;
@@ -81,26 +63,6 @@ function scaleGrid(g, sf) {
     for (const k of px)
         out[k] = Math.round(g[k] * sf);
     return out;
-}
-
-/** Eases a blur on an actor, adding the effect first and dropping it at 0. */
-function easeBlur(actor, name, radius, duration) {
-    if (!actor.get_effect(name)) {
-        if (radius === 0)
-            return;
-        actor.add_effect_with_name(name, new Shell.BlurEffect({
-            mode: Shell.BlurMode.ACTOR,
-            radius: 0,
-            brightness: 1,
-        }));
-    }
-    actor.ease_property(`@effects.${name}.radius`, radius, {
-        duration,
-        onComplete: () => {
-            if (radius === 0)
-                actor.remove_effect_by_name(name);
-        },
-    });
 }
 
 function extents(actor) {
@@ -145,7 +107,7 @@ export const Layer = GObject.registerClass({
         this.mode = Mode.BOARD;
         this._selected = null;
         this._kb = false;
-        this._engine = new SearchEngine();
+        this._search = new SearchMode(this, model);
 
         this._scrim = new Scrim();
         this.add_child(this._scrim);
@@ -159,8 +121,8 @@ export const Layer = GObject.registerClass({
 
         // while searching, takes clicks meant for the faded board; they
         // fall through to the layer, which closes
-        this._searchShield = new St.Widget({reactive: true, visible: false});
-        this._content.add_child(this._searchShield);
+        this.searchShield = new St.Widget({reactive: true, visible: false});
+        this._content.add_child(this.searchShield);
 
         this.pill = new SearchPill();
         this._content.add_child(this.pill);
@@ -220,8 +182,6 @@ export const Layer = GObject.registerClass({
 
         this.connect('captured-event', this._onCapturedEvent.bind(this));
         this.pill.connect('text-changed', (_p, text) => this._onQueryChanged(text));
-        this._engine.connectObject('apps', () => this._renderResults(),
-            'others', () => this._renderResults(), this);
         global.stage.connectObject('notify::key-focus', () => this._onKeyFocusChanged(), this);
         this.board.connectObject('layout-changed', () => this._onBoardRebuilt(), this);
         this._model.connectObject('changed', (_m, structural) => {
@@ -268,6 +228,14 @@ export const Layer = GObject.registerClass({
         return Main.layoutManager.monitors[this._monitorIndex];
     }
 
+    get searching() {
+        return this.mode === Mode.SEARCH;
+    }
+
+    get selected() {
+        return this._selected;
+    }
+
     // ---- controller interface used by tiles and results ----
 
     get focusApp() {
@@ -285,20 +253,11 @@ export const Layer = GObject.registerClass({
         // would close the layer without the launch animation.
         const icon = actor?.appIcon?.icon ?? null;
         if (icon) {
-            // the icon swells and fades while the layer zooms towards it
             this._launchIcon = icon;
             icon.connectObject('destroy', () => {
                 if (this._launchIcon === icon)
                     this._launchIcon = null;
             }, this);
-            icon.set_pivot_point(0.5, 0.5);
-            icon.ease({
-                scale_x: 1.4,
-                scale_y: 1.4,
-                duration: LAUNCH_MS,
-                mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
-            });
-            icon.ease({opacity: 0, duration: LAUNCH_MS, mode: Clutter.AnimationMode.EASE_IN_QUAD});
         }
         this.close({towards: icon});
         if (newWindow && app.can_open_new_window())
@@ -321,7 +280,7 @@ export const Layer = GObject.registerClass({
         this._folderOpener = tile;
         this._folderTile = tile;
         this.tooltip.showFor(null);
-        this._setSelected(null);
+        this.select(null);
 
         this._shield.show();
         this._shield.opacity = 0;
@@ -340,7 +299,7 @@ export const Layer = GObject.registerClass({
         const first = this.folderView.items[0];
         if (first) {
             first.grab_key_focus();
-            this._setSelected(first);
+            this.select(first);
         }
     }
 
@@ -351,7 +310,7 @@ export const Layer = GObject.registerClass({
         this._syncCoach();
         const tile = this._folderTile;
         this._folderTile = null;
-        this._setSelected(null);
+        this.select(null);
         const to = tile?.get_stage() ? this._tileRect(tile) : null;
         const landing = this.folderView.close(to, {instant});
         // and fades back in as the panel lands on it
@@ -376,7 +335,7 @@ export const Layer = GObject.registerClass({
             ? openerTile.slots.find(sl => sl.kind === 'more') ?? openerTile.slots.at(-1) : null;
         if (opener?.get_stage()) {
             opener.grab_key_focus();
-            this._setSelected(opener);
+            this.select(opener);
         } else {
             this.grab_key_focus();
         }
@@ -405,13 +364,8 @@ export const Layer = GObject.registerClass({
         return {x: e.get_x() - lx, y: e.get_y() - ly, width: e.get_width(), height: e.get_height()};
     }
 
-    activateResult(item, {newWindow = false} = {}) {
-        if (item.kind === 'app') {
-            this.activateApp(item.app, item, {newWindow});
-        } else if (item.kind === 'other') {
-            this._engine.activate(item.result);
-            this.close();
-        }
+    activateResult(item) {
+        this._search.activate(item);
     }
 
     onSlotHover(slot) {
@@ -445,7 +399,7 @@ export const Layer = GObject.registerClass({
         this.set_size(m.width, m.height);
         this._scrim.setArea(m.width, m.height);
         this._shield.set_size(m.width, m.height);
-        this._searchShield.set_size(m.width, m.height);
+        this.searchShield.set_size(m.width, m.height);
         this._content.set_size(m.width, m.height);
         this.folderView.set_size(m.width, m.height);
 
@@ -531,7 +485,7 @@ export const Layer = GObject.registerClass({
         this._settleOverlays();
         this.show();
         this._kb = false;
-        this._setSelected(null);
+        this.select(null);
         this.grab_key_focus();
         this._syncCoach({delay: 600});
         this._syncClock();
@@ -554,92 +508,8 @@ export const Layer = GObject.registerClass({
             duration: SCRIM_FADE_MS,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
         });
-        this._animateOpen();
+        animateOpen(this.board.tiles.values(), this.board.page, this.grid, this.pill);
         this.emit('open-changed', true);
-    }
-
-    // 0 for the top-left cell, 1 for the bottom-right one
-    _waveOrder(rect) {
-        const {cols, rows} = this.grid;
-        const far = cols - 1 + 1.4 * (rows - 1);
-        return far > 0 ? Math.min(1, (rect.x + 1.4 * rect.y) / far) : 0;
-    }
-
-    // Tiles pop in as a wave from the top-left, where the Show Apps button
-    // usually is; the search field drops in.
-    _animateOpen() {
-        for (const tile of this.board.tiles.values()) {
-            this._settleTile(tile);
-            if (tile.rect.page !== this.board.page)
-                continue;
-            const delay = Math.round(OPEN_SPREAD_MS * this._waveOrder(tile.rect));
-            tile.opacity = 0;
-            tile.set_scale(0.88, 0.88);
-            tile.translation_y = 26;
-            tile.ease({opacity: 255, delay, duration: OPEN_FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-            tile.ease({
-                scale_x: 1, scale_y: 1, translation_y: 0,
-                delay,
-                duration: OPEN_TILE_MS,
-                mode: Clutter.AnimationMode.EASE_OUT_BACK,
-            });
-        }
-        const pill = this.pill;
-        pill.remove_all_transitions();
-        pill.set_pivot_point(0.5, 0.5);
-        pill.opacity = 0;
-        pill.translation_y = -14;
-        pill.set_scale(0.97, 0.97);
-        pill.ease({opacity: 255, delay: 40, duration: 300, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-        pill.ease({
-            translation_y: 0, scale_x: 1, scale_y: 1,
-            delay: 40,
-            duration: 420,
-            mode: Clutter.AnimationMode.EASE_OUT_BACK,
-        });
-    }
-
-    // The reverse wave, faster, tiles sinking. Returns its length in ms.
-    _animateClose() {
-        let longest = 0;
-        for (const tile of this.board.tiles.values()) {
-            if (tile.rect.page !== this.board.page || !tile.visible)
-                continue;
-            const delay = Math.round(CLOSE_SPREAD_MS * (1 - this._waveOrder(tile.rect)));
-            tile.ease({opacity: 0, delay, duration: CLOSE_FADE_MS, mode: Clutter.AnimationMode.EASE_IN_QUAD});
-            tile.ease({
-                scale_x: 0.92, scale_y: 0.92, translation_y: 14,
-                delay,
-                duration: CLOSE_TILE_MS,
-                mode: Clutter.AnimationMode.EASE_IN_QUAD,
-            });
-            longest = Math.max(longest, delay + CLOSE_TILE_MS);
-        }
-        for (const a of this._overlays()) {
-            if (a.visible)
-                a.ease({opacity: 0, duration: CLOSE_FADE_MS, mode: Clutter.AnimationMode.EASE_IN_QUAD});
-        }
-        return longest;
-    }
-
-    // Launching: everything grows a little towards the icon and fades, as
-    // if going into the app. Returns the length in ms.
-    _animateLaunch(icon) {
-        const [x, y] = icon.get_transformed_position();
-        const [w, h] = icon.get_transformed_size();
-        const [lx, ly] = this.get_transformed_position();
-        this.set_pivot_point((x + w / 2 - lx) / this.width, (y + h / 2 - ly) / this.height);
-        this.ease({
-            scale_x: LAUNCH_ZOOM,
-            scale_y: LAUNCH_ZOOM,
-            duration: LAUNCH_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
-        });
-        for (const a of [this._content, ...this._overlays()]) {
-            if (a.visible)
-                a.ease({opacity: 0, duration: LAUNCH_MS, mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD});
-        }
-        return LAUNCH_MS;
     }
 
     // everything over the board that fades with it
@@ -653,16 +523,6 @@ export const Layer = GObject.registerClass({
             a.remove_transition('opacity');
             a.opacity = 255;
         }
-    }
-
-    _settleTile(tile) {
-        tile.remove_transition('opacity');
-        tile.remove_transition('scale-x');
-        tile.remove_transition('scale-y');
-        tile.remove_transition('translation-y');
-        tile.opacity = 255;
-        tile.set_scale(1, 1);
-        tile.translation_y = 0;
     }
 
     /**
@@ -688,7 +548,9 @@ export const Layer = GObject.registerClass({
         if (instant) {
             this._finishClose();
         } else {
-            const length = towards ? this._animateLaunch(towards) : this._animateClose();
+            const length = towards
+                ? animateLaunch(this, towards, [this._content, ...this._overlays()])
+                : animateClose(this.board.tiles.values(), this.board.page, this.grid, this._overlays());
             this._scrim.ease({
                 opacity: 0,
                 duration: Math.max(duration, length),
@@ -708,15 +570,13 @@ export const Layer = GObject.registerClass({
         this.set_scale(1, 1);
         if (this._launchIcon) {
             this._launchIcon.disconnectObject(this);
-            this._launchIcon.remove_all_transitions();
-            this._launchIcon.set_scale(1, 1);
-            this._launchIcon.opacity = 255;
+            resetLaunchIcon(this._launchIcon);
             this._launchIcon = null;
         }
         this._resetState();
         this._settleOverlays();
         for (const tile of this.board.tiles.values())
-            this._settleTile(tile);
+            settleTile(tile);
         if (this._grab) {
             Main.popModal(this._grab);
             this._grab = null;
@@ -730,10 +590,10 @@ export const Layer = GObject.registerClass({
         if (this.mode === Mode.FOLDER)
             this.closeFolder({instant: true});
         this.pill.text = '';
-        this._leaveSearch(true);
+        this._leaveSearch({instant: true});
         this._shield.remove_all_transitions();
         this._shield.hide();
-        this._setSelected(null);
+        this.select(null);
         this.tooltip.showFor(null);
         this.board.setPage(0, false);
         this.mode = Mode.BOARD;
@@ -751,7 +611,7 @@ export const Layer = GObject.registerClass({
                 this.closeFolder({instant: true});
             this.mode = Mode.EDIT;
             this._dismissCoach();
-            this._setSelected(null);
+            this.select(null);
             this.tooltip.showFor(null);
             this.pill.ease({opacity: 0, duration: 150, onComplete: () => this.pill.hide()});
             this._centerX(this.editBar, this.grid.pillY);
@@ -831,33 +691,11 @@ export const Layer = GObject.registerClass({
         if (show) {
             const sf = this.grid.sf;
             const [, natH] = this.coach.get_preferred_height(-1);
-            const y = Math.max(this.grid.bottomY + Math.round(24 * sf), this.height - Math.round(COACH_BOTTOM * sf) - natH);
+            const y = Math.max(this.grid.bottomY + Math.round(24 * sf),
+                this.height - Math.round(COACH_BOTTOM * sf) - natH);
             this._centerX(this.coach, Math.min(y, this.height - natH - 8));
-            if (!this.coach.visible) {
-                this.coach.show();
-                this.coach.opacity = 0;
-                this.coach.ease({opacity: 255, delay, duration: 300});
-            } else if (this._coachLeaving) {
-                this._coachLeaving = false;
-                this.coach.remove_all_transitions();
-                this.coach.ease({opacity: 255, duration: 150});
-            }
-        } else if (this.coach.visible && !this._isOpen) {
-            this._coachLeaving = false;
-            this.coach.remove_all_transitions();
-            this.coach.hide();
-        } else if (this.coach.visible && !this._coachLeaving) {
-            this._coachLeaving = true;
-            this.coach.remove_all_transitions();
-            this.coach.ease({
-                opacity: 0,
-                duration: 150,
-                onComplete: () => {
-                    this._coachLeaving = false;
-                    this.coach.hide();
-                },
-            });
         }
+        this.coach.setShown(show, {delay, instant: !this._isOpen});
     }
 
     _dismissCoach() {
@@ -874,7 +712,7 @@ export const Layer = GObject.registerClass({
             this._enterSearch();
         else if (!searching && this.mode === Mode.SEARCH)
             this._leaveSearch();
-        this._engine.setQuery(text);
+        this._search.setQuery(text);
     }
 
     _enterSearch() {
@@ -882,105 +720,17 @@ export const Layer = GObject.registerClass({
         this._syncCoach();
         this._syncClock();
         this.tooltip.showFor(null);
-        this.pill.setSearching(true);
-        this._searchShield.show();
-        this.board.remove_transition('opacity');
-        this.board.ease({opacity: SEARCH_BOARD_OPACITY, duration: SEARCH_FADE_MS});
-        easeBlur(this.board, 'search-blur', SEARCH_BLUR_RADIUS, SEARCH_FADE_MS);
-        this.results.remove_all_transitions();
-        this.results.show();
-        this.results.opacity = 0;
-        this.results.translation_y = -8;
-        this.results.ease({
-            opacity: 255,
-            translation_y: 0,
-            duration: 300,
-            mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
-        });
+        this._search.enter();
     }
 
-    _leaveSearch(instant = false) {
+    _leaveSearch({instant = false} = {}) {
         if (this.mode === Mode.SEARCH)
             this.mode = Mode.BOARD;
+        if (this._selected && this.results.contains(this._selected))
+            this.select(null);
+        this._search.leave({instant});
         this._syncCoach();
         this._syncClock();
-        this.pill.setSearching(false);
-        this.pill.setHint('', '');
-        this._searchShield.hide();
-        this._engine.reset();
-        if (this._selected && this.results.contains(this._selected))
-            this._setSelected(null);
-        this.results.remove_all_transitions();
-        if (instant) {
-            this.results.clear();
-            this.results.hide();
-        } else {
-            this.results.ease({
-                opacity: 0,
-                translation_y: -6,
-                duration: RESULTS_FADE_MS,
-                mode: Clutter.AnimationMode.EASE_IN_QUAD,
-                onComplete: () => {
-                    this.results.clear();
-                    this.results.hide();
-                },
-            });
-        }
-        this.board.remove_transition('opacity');
-        const duration = instant ? 0 : SEARCH_FADE_MS;
-        this.board.ease({opacity: 255, duration});
-        easeBlur(this.board, 'search-blur', 0, duration);
-    }
-
-    _renderResults() {
-        if (this.mode !== Mode.SEARCH)
-            return;
-        const apps = this._engine.apps.map(app => ({app, ...appCaption(app, this._model)}));
-        const others = this._engine.others;
-        let none = null;
-        this._fallback = null;
-        if (!apps.length && !others.length) {
-            const q = this.pill.text.trim();
-            this._fallback = this._engine.softwareFallback();
-            if (this._fallback?.open)
-                none = _('Nothing matches “%s”. Enter opens %s.').format(q, this._fallback.name);
-            else if (this._fallback)
-                none = _('Nothing matches “%s”. Enter searches %s.').format(q, this._fallback.name);
-            else
-                none = _('Nothing matches “%s”.').format(q);
-        }
-        const prevSel = this._selected;
-        const prevKey = prevSel?.app?.id ?? prevSel?.result?.id;
-        this.results.setResults(apps, others, none, {focusApp: this._model.focusApp});
-        // keep the selection on the same result if it is still there,
-        // otherwise select the first one
-        const items = this.results.items;
-        const keep = items.find(i => (i.app?.id ?? i.result?.id) === prevKey);
-        this._setSelected(this._kbInResults && keep ? keep : items[0] ?? null);
-        this._syncSearchHint();
-    }
-
-    _syncSearchHint() {
-        const n = this._engine.apps.length, o = this._engine.others.length;
-        const parts = [];
-        if (n)
-            parts.push(ngettext('%d app', '%d apps', n).format(n));
-        if (o)
-            parts.push(ngettext('%d other', '%d other', o).format(o));
-        const sel = this._selected;
-        let action = '';
-        if (sel?.kind === 'app') {
-            action = sel.app.state === Shell.AppState.RUNNING
-                ? _('Switch to %s').format(sel.app.get_name())
-                : _('Open %s').format(sel.app.get_name());
-        } else if (sel?.kind === 'other') {
-            action = _('Open %s').format(sel.result.name);
-        } else if (this._fallback) {
-            action = this._fallback.open
-                ? _('Open %s').format(this._fallback.name)
-                : _('Search %s').format(this._fallback.name);
-        }
-        this.pill.setHint(parts.join(' · '), action);
     }
 
     _startSearch(event) {
@@ -1005,7 +755,7 @@ export const Layer = GObject.registerClass({
             : null;
     }
 
-    _setSelected(actor) {
+    select(actor) {
         if (this._selected === actor) {
             this._paint(actor, !!actor && this._showSelection());
             return;
@@ -1023,7 +773,7 @@ export const Layer = GObject.registerClass({
             this._paint(actor, this._showSelection());
         }
         if (this.mode === Mode.SEARCH)
-            this._syncSearchHint();
+            this._search.syncHint();
         this._syncTooltip();
     }
 
@@ -1056,14 +806,14 @@ export const Layer = GObject.registerClass({
             return;
         }
         if (focus && this.contains(focus) && focus.has_style_class_name?.('cubby-focusable'))
-            this._setSelected(focus);
+            this.select(focus);
         else if (this.mode !== Mode.SEARCH && focus !== this.pill.entry.clutter_text)
-            this._setSelected(null);
+            this.select(null);
     }
 
     _onBoardRebuilt() {
         if (this._selected && !this._selected.get_stage())
-            this._setSelected(null);
+            this.select(null);
         if (this.mode === Mode.EDIT)
             this._edit.refresh();
     }
@@ -1111,15 +861,15 @@ export const Layer = GObject.registerClass({
 
     _focusItem(item) {
         if (this.mode === Mode.SEARCH) {
-            this._kbInResults = true;
-            this._setSelected(item);
+            this._search.selectionMoved();
+            this.select(item);
             return;
         }
         const tile = this.board.tileFor(item);
         if (tile && tile.rect && tile.rect.page !== this.board.page)
             this.board.setPage(tile.rect.page);
         item.grab_key_focus();
-        this._setSelected(item);
+        this.select(item);
         if (this.mode === Mode.FOLDER)
             ensureActorVisibleInScrollView(this.folderView.scrollView, item);
     }
@@ -1334,12 +1084,7 @@ export const Layer = GObject.registerClass({
             return Clutter.EVENT_STOP;
         }
         if (enter && this.mode === Mode.SEARCH) {
-            if (this._selected) {
-                this.activateResult(this._selected, {newWindow: ctrl});
-            } else if (this._fallback) {
-                this._fallback.run();
-                this.close();
-            }
+            this._search.activateSelection({newWindow: ctrl});
             return Clutter.EVENT_STOP;
         }
         // plain Enter is left to the focused button
@@ -1417,7 +1162,6 @@ export const Layer = GObject.registerClass({
         }
         if (this.mode === Mode.SEARCH) {
             this.pill.text = '';
-            this._kbInResults = false;
             return;
         }
         this.close();
@@ -1458,8 +1202,7 @@ export const Layer = GObject.registerClass({
             Main.popModal(this._grab);
             this._grab = null;
         }
-        this._engine.disconnectObject(this);
-        this._engine.destroy();
+        this._search.destroy();
         global.stage.disconnectObject(this);
         if (this._outsideWatch)
             global.stage.disconnectObject(this._outsideWatch);

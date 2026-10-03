@@ -119,5 +119,41 @@ class Coach extends St.BoxLayout {
         const ok = new St.Button({style_class: 'cubby-coach-ok', label: _('Got it'), can_focus: true});
         ok.connect('clicked', () => onDismiss());
         this.add_child(ok);
+        this._leaving = false;
+    }
+
+    /**
+     * Fades the tip in or out.
+     *
+     * @param {boolean} shown
+     * @param {object} [params]
+     * @param {number} [params.delay] - before fading in, in ms
+     * @param {boolean} [params.instant] - hide without fading
+     */
+    setShown(shown, {delay = 0, instant = false} = {}) {
+        if (shown && !this.visible) {
+            this.show();
+            this.opacity = 0;
+            this.ease({opacity: 255, delay, duration: 300});
+        } else if (shown && this._leaving) {
+            this._leaving = false;
+            this.remove_all_transitions();
+            this.ease({opacity: 255, duration: 150});
+        } else if (!shown && instant) {
+            this._leaving = false;
+            this.remove_all_transitions();
+            this.hide();
+        } else if (!shown && this.visible && !this._leaving) {
+            this._leaving = true;
+            this.remove_all_transitions();
+            this.ease({
+                opacity: 0,
+                duration: 150,
+                onComplete: () => {
+                    this._leaving = false;
+                    this.hide();
+                },
+            });
+        }
     }
 });

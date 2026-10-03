@@ -5,6 +5,7 @@
 // (mini 2x2 plus "+N") in the last slot when they don't all fit. A 1x1 tile
 // is only the preview. The folder name sits on a chip under the tile.
 
+import Cairo from 'cairo';
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Graphene from 'gi://Graphene';
@@ -405,8 +406,8 @@ class Tile extends St.Widget {
             const [w, h] = area.get_surface_size();
             cr.setSourceRGBA(...cairoRgba(this._theme.accentInk));
             cr.setLineWidth(2.5);
-            cr.setLineCap(1); // round
-            cr.setLineJoin(1); // round
+            cr.setLineCap(Cairo.LineCap.ROUND);
+            cr.setLineJoin(Cairo.LineJoin.ROUND);
             cr.moveTo(w - 2, 2);
             cr.lineTo(w - 2, h - 2);
             cr.lineTo(2, h - 2);

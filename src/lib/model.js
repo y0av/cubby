@@ -344,7 +344,6 @@ export class AppModel extends Signals.EventEmitter {
             }
         }
 
-        // diff against the previous folders
         const prev = new Map(this.folders.map(f => [f.id, f]));
         const structural = this.folders.map(f => f.id).join('\n') !== groups.map(g => g.id).join('\n');
         const changed = new Set();
