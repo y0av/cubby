@@ -68,11 +68,12 @@ class TestApi {
         this._ptr.notify_button(now(), button, Clutter.ButtonState.RELEASED);
     }
 
-    // Glides the pointer from the current press point to (x, y) over ms.
+    // Glides the pointer from (x0, y0) to (x1, y1) over ms, easing in and out.
     glide(x0, y0, x1, y1, ms = 400, done = null) {
         const t0 = now();
         const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
-            const k = Math.min(1, (now() - t0) / 1000 / ms);
+            const t = Math.min(1, (now() - t0) / 1000 / ms);
+            const k = t * t * (3 - 2 * t);
             this.move(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k);
             if (k < 1)
                 return GLib.SOURCE_CONTINUE;
@@ -103,22 +104,29 @@ class TestApi {
     }
 
     /**
-     * Captures every painted frame for `ms` (stage copies kept on the GPU),
-     * then writes the region (x, y, w, h) of each to dir/fNNN.png with its
-     * time in ms in dir/times.txt. Sets this.recording = false when done.
+     * Captures painted frames for `ms`, at most one every `interval` ms
+     * (stage copies kept on the GPU), then writes the region (x, y, w, h) of
+     * each to dir/fNNN.png, with its time in ms in dir/times.txt and, in
+     * dir/frames.json, its time and the pointer position plus the marks
+     * made meanwhile. Sets this.recording = false when done.
      */
-    record(ms, dir, x, y, w, h, maxFrames = 60) {
+    record(ms, dir, x, y, w, h, {maxFrames = 60, interval = 0} = {}) {
         this.recording = true;
+        this.marks = [];
         const frames = [];
         const t0 = now();
+        this._recordStart = t0;
         const pending = [];
+        let last = -Infinity;
         const id = global.stage.connect('after-paint', () => {
             const t = (now() - t0) / 1000;
-            if (t > ms || frames.length + pending.length >= maxFrames)
+            if (t > ms || t - last < interval || frames.length + pending.length >= maxFrames)
                 return;
+            last = t;
+            const [px, py] = global.get_pointer();
             const shooter = new Shell.Screenshot();
             const p = shooter.screenshot_stage_to_content()
-                .then(([content]) => frames.push({t, tex: content.get_texture()}))
+                .then(([content]) => frames.push({t, px, py, tex: content.get_texture()}))
                 .catch(e => logError(e));
             pending.push(p);
         });
@@ -136,6 +144,10 @@ class TestApi {
                     times.push(frames[i].t.toFixed(1));
                 }
                 GLib.file_set_contents(`${dir}/times.txt`, times.join('\n'));
+                GLib.file_set_contents(`${dir}/frames.json`, JSON.stringify({
+                    frames: frames.map(f => ({t: f.t, x: f.px - x, y: f.py - y})),
+                    marks: this.marks.map(m => ({...m, x: m.x - x, y: m.y - y})),
+                }));
                 this.recording = false;
             }).catch(e => {
                 logError(e);
@@ -143,6 +155,28 @@ class TestApi {
             });
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    /** Notes an event (a click, a key) at the current time of the recording. */
+    mark(kind, label = '') {
+        if (!this.recording)
+            return;
+        const [x, y] = global.get_pointer();
+        this.marks.push({t: (now() - this._recordStart) / 1000, kind, label, x, y});
+    }
+
+    /** Runs [ms, callback] steps on a timeline starting now. */
+    play(steps) {
+        for (const [ms, fn] of steps) {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+                try {
+                    fn();
+                } catch (e) {
+                    logError(e, 'cubbyTest.play');
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+        }
     }
 
     destroy() {

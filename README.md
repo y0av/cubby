@@ -4,13 +4,13 @@ A home screen for GNOME Shell. Cubby replaces the Show Apps grid with your app f
 
 Only Show Apps changes. The Activities overview, window picker and workspaces stay as they are.
 
-![Opening Cubby, searching, opening a folder, switching to the light style and editing the layout](docs/demo.gif)
+![Opening Cubby from the Show Apps button, reordering apps in a folder, moving and resizing tiles in edit mode, then searching and launching Calculator](docs/demo.gif)
 
 | Dark | Light |
 |---|---|
 | ![Dark style with the clock on](docs/dark.jpg) | ![Light style on a bright wallpaper](docs/light.jpg) |
 | **Search** | **Folder** |
-| ![Searching "te": apps, settings and characters](docs/search.jpg) | ![A folder grown out of its tile](docs/folder.jpg) |
+| ![Searching "te": apps, then settings](docs/search.jpg) | ![A folder grown out of its tile](docs/folder.jpg) |
 | **Edit layout** | **Right-click menu** |
 | ![Edit mode with dashed outlines, a grip and a resize handle](docs/edit.jpg) | ![The right-click menu](docs/menu.jpg) |
 
