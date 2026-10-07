@@ -415,7 +415,8 @@ export const Layer = GObject.registerClass({
         this.editBar.height = pillH;
         this.clock.width = m.width;
         this.clock.set_position(0, grid.clockY);
-        this._clockHalo.place(m.width / 2, grid.clockY + Math.round(50 * sf), sf);
+        this.clock.setScale(grid.scale);
+        this._clockHalo.place(m.width / 2, grid.clockY + Math.round(50 * grid.scale * sf), grid.scale * sf);
         this._syncClockHalo();
         this._syncCoach();
     }
@@ -450,9 +451,10 @@ export const Layer = GObject.registerClass({
         if (!m || !this.grid)
             return;
         // the digits, as fractions of the monitor
-        const half = 170 / m.width;
-        const y0 = this.grid.clockY / m.height;
-        const y1 = (this.grid.clockY + 120) / m.height;
+        const {clockY, scale, sf} = this.grid;
+        const half = 170 * scale * sf / m.width;
+        const y0 = clockY / m.height;
+        const y1 = (clockY + 120 * scale * sf) / m.height;
         const scrim = scrimAlpha((y0 + y1) / 2, this._wallpaper.luminance);
         const needed = this._clockHalo.update(this._wallpaper, [0.5 - half, y0, 0.5 + half, y1], scrim);
         this._clockHalo.visible = needed && this.clock.visible;

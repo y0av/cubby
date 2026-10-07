@@ -60,6 +60,20 @@ class Clock extends St.BoxLayout {
         this._wallClock = null;
     }
 
+    /**
+     * Sizes the clock with the grid, so that on a small screen it shrinks
+     * with the tiles instead of crowding them. The date stays readable.
+     *
+     * @param {number} scale - the grid's scale, 1 at the reference size
+     */
+    setScale(scale) {
+        const size = (px, min = 0) => Math.max(min, Math.round(px * scale));
+        this.style = `spacing: ${size(10)}px;`;
+        this._time.style = `font-size: ${size(92)}px;`;
+        this._period.style = `font-size: ${size(28)}px; padding-bottom: ${size(14)}px;`;
+        this._date.style = `font-size: ${size(16, 13)}px;`;
+    }
+
     setBright(bright) {
         if (bright)
             this.add_style_class_name('cubby-clock-on-bright');

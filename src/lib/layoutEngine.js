@@ -43,6 +43,8 @@ export function computeGrid(workArea, monitor, {clock = false} = {}) {
 function metricsFor(s, wa, clock) {
     const U = Math.round(REF.U * s), V = Math.round(REF.V * s);
     const GX = Math.round(REF.GX * s), GY = Math.round(REF.GY * s);
+    // with the clock: 18 above it, the clock and date (about 155 tall, and
+    // it scales with s too), and about 40 below
     const headerGap = Math.round((clock ? 212 : 80) * s);
     const rowsFor = (top, bottom) => Math.floor(
         (wa.height - top - PILL_H - headerGap - CHIP_OVERHANG - bottom + GY) / (V + GY));
