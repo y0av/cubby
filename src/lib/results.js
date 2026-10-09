@@ -148,13 +148,12 @@ class OtherResult extends St.Button {
         this.result = result;
         const box = new St.BoxLayout({style_class: 'cubby-other-box', y_align: Clutter.ActorAlign.CENTER});
         let icon = null;
+        // a provider's broken icon should not cost the result
         try {
             icon = result.iconName
                 ? new St.Icon({icon_name: result.iconName, icon_size: CHIP_ICON})
                 : result.createIcon?.(CHIP_ICON);
-        } catch {
-            icon = null;
-        }
+        } catch {}
         if (icon) {
             icon.y_align = Clutter.ActorAlign.CENTER;
             box.add_child(icon);

@@ -15,6 +15,13 @@ const TOGGLE_KEY = 'toggle-application-view';
 const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
 const KEY_MODES = Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW;
 
+function bindToggleKey(handler) {
+    Main.wm.removeKeybinding(TOGGLE_KEY);
+    Main.wm.addKeybinding(TOGGLE_KEY,
+        new Gio.Settings({schema_id: SHELL_KEYBINDINGS_SCHEMA}),
+        Meta.KeyBindingFlags.IGNORE_AUTOREPEAT, KEY_MODES, handler);
+}
+
 export class EntryPoints {
     /**
      * @param {object} layer - the Layer; needs isOpen, open(), close(), toggle()
@@ -86,11 +93,7 @@ export class EntryPoints {
                         self._request();
                 });
 
-        Main.wm.removeKeybinding(TOGGLE_KEY);
-        Main.wm.addKeybinding(TOGGLE_KEY,
-            new Gio.Settings({schema_id: SHELL_KEYBINDINGS_SCHEMA}),
-            Meta.KeyBindingFlags.IGNORE_AUTOREPEAT, KEY_MODES,
-            () => this._onKeybinding());
+        bindToggleKey(() => this._onKeybinding());
 
         this._layer.connectObject('open-changed',
             (_l, open) => this._syncButton(open), this);
@@ -114,11 +117,7 @@ export class EntryPoints {
         this._injections.clear();
 
         const controls = this._controls;
-        Main.wm.removeKeybinding(TOGGLE_KEY);
-        Main.wm.addKeybinding(TOGGLE_KEY,
-            new Gio.Settings({schema_id: SHELL_KEYBINDINGS_SCHEMA}),
-            Meta.KeyBindingFlags.IGNORE_AUTOREPEAT, KEY_MODES,
-            controls._toggleAppsPage.bind(controls));
+        bindToggleKey(controls._toggleAppsPage.bind(controls));
     }
 
     _onKeybinding() {
@@ -133,12 +132,7 @@ export class EntryPoints {
         if (this._syncing)
             return;
         if (Main.overview.visible || Main.overview.animationInProgress) {
-            this._syncing = true;
-            try {
-                Main.overview.hide();
-            } finally {
-                this._syncing = false;
-            }
+            this._quietly(() => Main.overview.hide());
             this._layer.open();
             return;
         }
@@ -152,9 +146,16 @@ export class EntryPoints {
         const button = Main.overview.dash?.showAppsButton;
         if (!button || button.checked === open)
             return;
+        this._quietly(() => {
+            button.checked = open;
+        });
+    }
+
+    // runs fn with the overrides ignoring the calls it causes
+    _quietly(fn) {
         this._syncing = true;
         try {
-            button.checked = open;
+            fn();
         } finally {
             this._syncing = false;
         }

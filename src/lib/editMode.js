@@ -34,16 +34,18 @@ export class EditMode {
         if (this.active)
             return;
         this.active = true;
-        const wiggle = St.Settings.get().enable_animations;
         this._board.setEditing(true);
-        [...this._board.tiles.values()].forEach((t, i) =>
-            t.setEditing(true, this._theme, i * WIGGLE_PHASE_MS, wiggle));
+        this._decorateTiles();
     }
 
     /** Gives tiles created while editing (a new folder) their decorations. */
     refresh() {
-        if (!this.active)
-            return;
+        if (this.active)
+            this._decorateTiles();
+    }
+
+    // staggered wiggle phases, so the tiles don't move in step
+    _decorateTiles() {
         const wiggle = St.Settings.get().enable_animations;
         [...this._board.tiles.values()].forEach((t, i) => {
             if (!t.editing)
