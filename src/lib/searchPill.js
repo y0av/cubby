@@ -48,6 +48,8 @@ export const SearchPill = GObject.registerClass({
         this._hint.add_child(this._keycap);
         this._hint.add_child(this._action);
         this.add_child(this._hint);
+        this._searching = false;
+        this._searchBorder = null;
     }
 
     get text() {
@@ -75,12 +77,11 @@ export const SearchPill = GObject.registerClass({
         this._keycap.style = `background-color: ${theme.accentRgba(0.22)}; border: 1px solid ${theme.accentRgba(0.55)};`;
         this.entry.style = `caret-color: ${theme.accent}; selection-background-color: ${theme.accentRgba(0.4)};`;
         this._searchBorder = theme.accentRgba(0.6);
-        this.setSearching(this._searching ?? false);
+        this.setSearching(this._searching);
     }
 
     setSearching(on) {
         this._searching = on;
         this.style = on && this._searchBorder ? `border-color: ${this._searchBorder};` : null;
     }
-
 });

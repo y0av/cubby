@@ -31,10 +31,10 @@ const WIGGLE_MS = 1100;
 const MOVE_MS = 380;
 const DECOR_FADE_MS = 180;
 
-/** A big-icon slot: icon, pips, name. */
-const AppSlot = GObject.registerClass(
-class AppSlot extends St.Button {
-    _init(tile, app, {size, names, labelWidth, isNew}) {
+/** A focusable button in a tile; `kind` is 'app' or 'more'. */
+const Slot = GObject.registerClass(
+class Slot extends St.Button {
+    _init(tile, kind) {
         super._init({
             style_class: 'cubby-slot cubby-focusable',
             can_focus: true,
@@ -42,7 +42,17 @@ class AppSlot extends St.Button {
             track_hover: true,
             button_mask: St.ButtonMask.ONE,
         });
-        this.kind = 'app';
+        this.kind = kind;
+        addPressFeedback(this);
+        this.connect('notify::hover', () => tile.controller.onSlotHover(this));
+    }
+});
+
+/** A big-icon slot: icon, pips, name. */
+const AppSlot = GObject.registerClass(
+class AppSlot extends Slot {
+    _init(tile, app, {size, names, labelWidth, isNew}) {
+        super._init(tile, 'app');
         this.app = app;
         const box = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
@@ -65,9 +75,7 @@ class AppSlot extends St.Button {
             box.add_child(label);
         }
         this.set_child(box);
-        addPressFeedback(this);
         this.connect('clicked', () => tile.controller.activateApp(app, this));
-        this.connect('notify::hover', () => tile.controller.onSlotHover(this));
     }
 
     get tooltipText() {
@@ -85,16 +93,9 @@ class AppSlot extends St.Button {
  * "+N" badge for apps not visible anywhere on the tile. Opens the folder.
  */
 const MoreSlot = GObject.registerClass(
-class MoreSlot extends St.Button {
+class MoreSlot extends Slot {
     _init(tile, apps, {badge, miniSize, single}) {
-        super._init({
-            style_class: 'cubby-slot cubby-focusable',
-            can_focus: true,
-            reactive: true,
-            track_hover: true,
-            button_mask: St.ButtonMask.ONE,
-        });
-        this.kind = 'more';
+        super._init(tile, 'more');
         this.tile = tile;
         this.apps = apps;
         this._badge = badge;
@@ -138,9 +139,7 @@ class MoreSlot extends St.Button {
             }));
         }
         this.set_child(mini);
-        addPressFeedback(this);
         this.connect('clicked', () => tile.controller.openFolder(tile.folder.id));
-        this.connect('notify::hover', () => tile.controller.onSlotHover(this));
     }
 
     get tooltipText() {
