@@ -59,13 +59,14 @@ export const Board = GObject.registerClass({
                 this._updateRunning(oldApp);
                 this._updateRunning(newApp);
             }, this);
-        this._settings.connectObject('changed::show-app-names', () => this.relayout(true),
+        this._settings.connectObject(
+            'changed::show-app-names', () => this.relayout(true),
+            'changed::frosted-glass', () => this._syncFrostEnabled(),
             // a reset from the preferences window
             'changed::layouts', () => {
                 if (!this._writing)
                     this._resolve();
             }, this);
-        this._settings.connectObject('changed::frosted-glass', () => this._syncFrostEnabled(), this);
         this.connect('destroy', () => {
             global.stage.disconnectObject(this);
             this._model.disconnectObject(this);
@@ -230,11 +231,15 @@ export const Board = GObject.registerClass({
             const r = this.rects[id];
             tile.layout(r, this.pixelRect(r), this.grid, names, {force});
         }
-        // edit mode offers one empty page to move tiles onto
-        this.nPages = L.pageCount(this.rects) + (this.editing ? 1 : 0);
+        this.nPages = this._pageCount();
         this._syncDots();
         this._syncPlaceholders();
         this.setPage(Math.min(this.page, this.nPages - 1), false);
+    }
+
+    // edit mode offers one empty page to move tiles onto
+    _pageCount() {
+        return L.pageCount(this.rects) + (this.editing ? 1 : 0);
     }
 
     // ---- edit mode ----
@@ -329,7 +334,7 @@ export const Board = GObject.registerClass({
         this.rects = {...this.rects, [id]: {...rect}};
         const tile = this.tiles.get(id);
         tile?.layout(this.rects[id], this.pixelRect(this.rects[id]), this.grid, this.names, {animate});
-        const n = L.pageCount(this.rects) + (this.editing ? 1 : 0);
+        const n = this._pageCount();
         if (n !== this.nPages) {
             this.nPages = n;
             this._syncDots();
@@ -424,6 +429,11 @@ export const Board = GObject.registerClass({
         return L.readingOrder(this.rects)
             .filter(id => this.rects[id].page === page)
             .flatMap(id => this.tiles.get(id)?.slots ?? []);
+    }
+
+    /** Every tile in reading order: page, row, column. */
+    tilesInOrder() {
+        return L.readingOrder(this.rects).map(id => this.tiles.get(id));
     }
 
     tileFor(actor) {
