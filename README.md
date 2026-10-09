@@ -17,6 +17,7 @@ Super+A or any Show Apps button opens it. Arrows and Tab move around, Enter open
 Needs GNOME Shell 50. Works with the stock dash, Ubuntu Dock and Dash to Panel.
 
 ```sh
+curl -LO https://github.com/y0av/cubby/releases/latest/download/cubby@y0av.github.io.shell-extension.zip
 gnome-extensions install --force cubby@y0av.github.io.shell-extension.zip
 # log out and back in, then:
 gnome-extensions enable cubby@y0av.github.io
