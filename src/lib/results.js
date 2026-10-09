@@ -13,9 +13,14 @@ import St from 'gi://St';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {AppIcon, accessibleName, addPressFeedback} from './appIcon.js';
+import {popIn} from './transitions.js';
 import {setStyleClass} from './util.js';
 
 const APP_COLS = 5;
+const APP_ROW_H = 122; // .cubby-result height
+const APP_GAP = 4;
+// .cubby-results padding and border on both sides
+const PANEL_INSET_X = 26;
 const RESULT_ICON = 56;
 const CHIP_ICON = 18;
 const POP_STAGGER_MS = 20;
@@ -222,8 +227,8 @@ class ResultsPanel extends St.BoxLayout {
     }
 
     _updateApps(apps, animate, focusApp) {
-        const inner = Math.max(0, this.width - 26);
-        const cellW = Math.floor((inner - 4 * (APP_COLS - 1)) / APP_COLS);
+        const inner = Math.max(0, this.width - PANEL_INSET_X);
+        const cellW = Math.floor((inner - APP_GAP * (APP_COLS - 1)) / APP_COLS);
         const live = new Set(apps.map(a => a.app.id));
         for (const [id, item] of this._appItems) {
             if (!live.has(id)) {
@@ -233,7 +238,7 @@ class ResultsPanel extends St.BoxLayout {
         }
         let fresh = 0;
         this._apps = apps.map((a, i) => {
-            const x = (i % APP_COLS) * (cellW + 4), y = Math.floor(i / APP_COLS) * (122 + 4);
+            const x = (i % APP_COLS) * (cellW + APP_GAP), y = Math.floor(i / APP_COLS) * (APP_ROW_H + APP_GAP);
             let item = this._appItems.get(a.app.id);
             if (item) {
                 item.setCaption(a.caption, a.live, focusApp);
@@ -252,7 +257,7 @@ class ResultsPanel extends St.BoxLayout {
             return item;
         });
         const rows = Math.ceil(apps.length / APP_COLS);
-        this._appsGrid.set_size(inner, rows ? rows * 122 + (rows - 1) * 4 : 0);
+        this._appsGrid.set_size(inner, rows ? rows * APP_ROW_H + (rows - 1) * APP_GAP : 0);
     }
 
     _updateOthers(others, animate) {
@@ -298,22 +303,8 @@ class ResultsPanel extends St.BoxLayout {
     }
 
     _pop(item, i, animate) {
-        if (!animate)
-            return;
-        item.opacity = 0;
-        item.set_scale(0.88, 0.88);
-        item.translation_y = 10;
-        const delay = i * POP_STAGGER_MS;
-        // opacity must not overshoot: it would wrap past 255 and blink
-        item.ease({opacity: 255, delay, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-        item.ease({
-            scale_x: 1,
-            scale_y: 1,
-            translation_y: 0,
-            delay,
-            duration: 300,
-            mode: Clutter.AnimationMode.EASE_OUT_BACK,
-        });
+        if (animate)
+            popIn(item, {scale: 0.88, dy: 10, delay: i * POP_STAGGER_MS, fade: 200, settle: 300});
     }
 
     clear() {

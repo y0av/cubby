@@ -14,6 +14,7 @@ import St from 'gi://St';
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {AppIcon, accessibleName, addPressFeedback} from './appIcon.js';
+import {popIn} from './transitions.js';
 
 const PITCH_X = 166;
 const PITCH_Y = 158;
@@ -23,6 +24,8 @@ const ICON = 72;
 const PAD_X = 40;
 const TOP = 86;
 const BOTTOM = 34;
+const CLOSE_INSET = 18;
+const CLOSE_SIZE = 40;
 const GROW_MS = 400;
 const SHRINK_MS = 320;
 // the shrink is nearly done this early; the panel fades into the tile from here
@@ -32,10 +35,13 @@ const ITEM_STAGGER_MS = 18;
 const REFLOW_MS = 200;
 const AUTOSCROLL_EDGE = 48;
 
+function gridSize(n) {
+    return {cols: Math.max(1, Math.min(MAX_COLS, n)), rows: Math.ceil(n / MAX_COLS)};
+}
+
 /** Top-left of slot i of n, with the last row centred. */
 function slotPos(i, n) {
-    const cols = Math.max(1, Math.min(MAX_COLS, n));
-    const rows = Math.ceil(n / MAX_COLS);
+    const {cols, rows} = gridSize(n);
     const row = Math.floor(i / MAX_COLS);
     const inRow = row === rows - 1 ? n - row * MAX_COLS : cols;
     const offset = (cols - inRow) * PITCH_X / 2;
@@ -122,8 +128,13 @@ class FolderGrid extends St.Viewport {
             else
                 item.set_position(p.x, p.y);
         });
-        const cols = Math.max(1, Math.min(MAX_COLS, n));
-        this.set_size(cols * PITCH_X, Math.ceil(n / MAX_COLS) * PITCH_Y);
+        const {cols, rows} = gridSize(n);
+        this.set_size(cols * PITCH_X, rows * PITCH_Y);
+    }
+
+    move(appId, to) {
+        this.order.splice(this.order.indexOf(appId), 1);
+        this.order.splice(to, 0, appId);
     }
 
     /** Index of the slot whose centre is nearest (x, y), in grid pixels. */
@@ -254,8 +265,7 @@ class FolderView extends St.Widget {
         this.folder = folder;
         this._from = from;
         const n = folder.apps.length;
-        const cols = Math.max(1, Math.min(MAX_COLS, n));
-        const rows = Math.ceil(n / MAX_COLS);
+        const {cols, rows} = gridSize(n);
         const W = cols * PITCH_X + 2 * PAD_X;
         const maxH = area.height - area.top - 40;
         const H = Math.min(TOP + rows * PITCH_Y + BOTTOM, maxH);
@@ -271,7 +281,7 @@ class FolderView extends St.Widget {
         this._inner.set_size(W, H);
         const [, tw] = this._title.get_preferred_width(-1);
         this._title.set_position(Math.round((W - tw) / 2), 28);
-        this._close.set_position(W - 18 - 40, 18);
+        this._close.set_position(W - CLOSE_INSET - CLOSE_SIZE, CLOSE_INSET);
         this._syncSortButton(customOrder);
         this._scroll.set_position(PAD_X, TOP);
         this._scroll.set_size(W - 2 * PAD_X, H - TOP - BOTTOM / 2);
@@ -303,17 +313,7 @@ class FolderView extends St.Widget {
         this._inner.ease({opacity: 255, delay: 60, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
         this.items.forEach((item, i) => {
             item.remove_all_transitions();
-            item.opacity = 0;
-            item.set_scale(0.8, 0.8);
-            const delay = 60 + Math.min(i, 24) * ITEM_STAGGER_MS;
-            // opacity must not overshoot: it would wrap past 255 and blink
-            item.ease({opacity: 255, delay, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-            item.ease({
-                scale_x: 1, scale_y: 1,
-                delay,
-                duration: 300,
-                mode: Clutter.AnimationMode.EASE_OUT_BACK,
-            });
+            popIn(item, {scale: 0.8, delay: 60 + Math.min(i, 24) * ITEM_STAGGER_MS, fade: 220, settle: 300});
         });
     }
 
@@ -322,7 +322,7 @@ class FolderView extends St.Widget {
         if (!customOrder)
             return;
         const [, bw] = this._sortButton.get_preferred_width(-1);
-        this._sortButton.set_position(this._inner.width - 18 - 40 - 8 - bw, 22);
+        this._sortButton.set_position(this._inner.width - CLOSE_INSET - CLOSE_SIZE - 8 - bw, 22);
     }
 
     /** The folder's order changed from outside (Sort by use). */
@@ -373,8 +373,7 @@ class FolderView extends St.Widget {
         const target = grid.slotAt(gx - d.dx + PITCH_X / 2, gy - d.dy + ITEM_H / 2);
         const from = grid.order.indexOf(d.item.app.id);
         if (target !== from) {
-            grid.order.splice(from, 1);
-            grid.order.splice(target, 0, d.item.app.id);
+            grid.move(d.item.app.id, target);
             grid.relayout(true, d.item);
         }
     }
@@ -425,8 +424,7 @@ class FolderView extends St.Widget {
         const to = Math.max(0, Math.min(grid.order.length - 1, from + dx + dy * MAX_COLS));
         if (from < 0 || to === from)
             return null;
-        grid.order.splice(from, 1);
-        grid.order.splice(to, 0, item.app.id);
+        grid.move(item.app.id, to);
         grid.relayout(true);
         this.items = grid.items;
         return [...grid.order];

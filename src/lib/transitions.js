@@ -25,6 +25,32 @@ function waveOrder(rect, {cols, rows}) {
     return far > 0 ? Math.min(1, (rect.x + 1.4 * rect.y) / far) : 0;
 }
 
+/**
+ * Fades an actor in while it scales and slides to rest from `scale` and
+ * `dy`. Only the movement overshoots: an overshooting opacity would wrap
+ * past 255 and blink.
+ *
+ * @param {Clutter.Actor} actor
+ * @param {object} params
+ * @param {number} [params.scale] - starting scale
+ * @param {number} [params.dy] - starting translation_y
+ * @param {number} [params.delay] - in ms
+ * @param {number} params.fade - fade duration in ms
+ * @param {number} params.settle - scale and slide duration in ms
+ */
+export function popIn(actor, {scale = 1, dy = 0, delay = 0, fade, settle}) {
+    actor.opacity = 0;
+    actor.set_scale(scale, scale);
+    actor.translation_y = dy;
+    actor.ease({opacity: 255, delay, duration: fade, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+    actor.ease({
+        scale_x: 1, scale_y: 1, translation_y: 0,
+        delay,
+        duration: settle,
+        mode: Clutter.AnimationMode.EASE_OUT_BACK,
+    });
+}
+
 /** Puts a tile back at rest, stopping any open or close animation. */
 export function settleTile(tile) {
     for (const prop of ['opacity', 'scale-x', 'scale-y', 'translation-y'])
@@ -45,31 +71,17 @@ export function animateOpen(tiles, page, grid, field) {
         settleTile(tile);
         if (tile.rect.page !== page)
             continue;
-        const delay = Math.round(OPEN_SPREAD_MS * waveOrder(tile.rect, grid));
-        tile.opacity = 0;
-        tile.set_scale(0.88, 0.88);
-        tile.translation_y = 26;
-        // opacity must not overshoot: it would wrap past 255 and blink
-        tile.ease({opacity: 255, delay, duration: OPEN_FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-        tile.ease({
-            scale_x: 1, scale_y: 1, translation_y: 0,
-            delay,
-            duration: OPEN_TILE_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_BACK,
+        popIn(tile, {
+            scale: 0.88,
+            dy: 26,
+            delay: Math.round(OPEN_SPREAD_MS * waveOrder(tile.rect, grid)),
+            fade: OPEN_FADE_MS,
+            settle: OPEN_TILE_MS,
         });
     }
     field.remove_all_transitions();
     field.set_pivot_point(0.5, 0.5);
-    field.opacity = 0;
-    field.translation_y = -14;
-    field.set_scale(0.97, 0.97);
-    field.ease({opacity: 255, delay: 40, duration: 300, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-    field.ease({
-        translation_y: 0, scale_x: 1, scale_y: 1,
-        delay: 40,
-        duration: 420,
-        mode: Clutter.AnimationMode.EASE_OUT_BACK,
-    });
+    popIn(field, {scale: 0.97, dy: -14, delay: 40, fade: 300, settle: 420});
 }
 
 /**
