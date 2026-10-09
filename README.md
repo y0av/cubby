@@ -8,7 +8,7 @@ A home screen for GNOME Shell. Cubby replaces the Show Apps grid with your app f
 |---|---|
 | ![Dark style](docs/dark.jpg) | ![Light style](docs/light.jpg) |
 
-Tiles come from your existing GNOME app folders. Apps outside any folder go to an "Unsorted" tile, and if you have no folders, apps are grouped by category. Each tile shows its most used apps as big icons and the rest as a small preview; click the preview to open the folder. Type anywhere to search apps, settings and files. Cubby reads your folders and app usage from GNOME's settings but never changes them.
+Tiles are your existing GNOME app folders, with the apps you use most up front. Type anywhere to search apps, settings and files.
 
 ## Install
 
