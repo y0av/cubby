@@ -8,9 +8,7 @@ A home screen for GNOME Shell. Cubby replaces the Show Apps grid with your app f
 |---|---|
 | ![Dark style](docs/dark.jpg) | ![Light style](docs/light.jpg) |
 
-Tiles come from your existing GNOME app folders. Apps outside any folder go to an "Unsorted" tile, and if you have no folders, apps are grouped by category. Each tile shows its most used apps as big icons and the rest as a small preview; click the preview to open the folder. Type anywhere to search apps, settings and files.
-
-Super+A or any Show Apps button opens it. Arrows and Tab move around, Enter opens, Esc steps back. To rearrange tiles, press Ctrl+E (or right-click → Edit layout, or long-press a tile), then drag a tile to move it or drag its corner handle to resize. Each screen size keeps its own layout.
+Tiles come from your existing GNOME app folders. Apps outside any folder go to an "Unsorted" tile, and if you have no folders, apps are grouped by category. Each tile shows its most used apps as big icons and the rest as a small preview; click the preview to open the folder. Type anywhere to search apps, settings and files. Cubby reads your folders and app usage from GNOME's settings but never changes them.
 
 ## Install
 
@@ -22,8 +20,6 @@ gnome-extensions install --force cubby@y0av.github.io.shell-extension.zip
 # log out and back in, then:
 gnome-extensions enable cubby@y0av.github.io
 ```
-
-Settings are under right-click → Preferences: app names, clock, frosted glass, accent colour, and a switch back to the stock grid. Cubby reads your app folders and usage from GNOME's settings but never writes to them.
 
 ## Development
 
