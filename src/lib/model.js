@@ -41,6 +41,8 @@ const CATEGORY_GROUPS = [
 ];
 const OTHER_GROUP = {id: 'Other', name: () => _('Other')};
 
+const idsKey = items => items.map(i => i.id).join('\n');
+
 function categoriesOf(appInfo) {
     const s = appInfo.get_categories();
     return s ? s.split(';').filter(Boolean) : [];
@@ -146,9 +148,9 @@ export class AppModel extends Signals.EventEmitter {
         const orders = this._orders();
         const changed = new Set();
         for (const f of this.folders) {
-            const before = f.apps.map(a => a.id).join('\n');
+            const before = idsKey(f.apps);
             this._sortApps(f, orders);
-            if (f.apps.map(a => a.id).join('\n') !== before)
+            if (idsKey(f.apps) !== before)
                 changed.add(f.id);
         }
         if (changed.size)
@@ -244,6 +246,7 @@ export class AppModel extends Signals.EventEmitter {
 
     _visibleAppInfos() {
         return this._appSys.get_installed().filter(info => {
+            // as the stock app grid does: skip desktop files with invalid encodings
             try {
                 info.get_id();
             } catch {
@@ -269,10 +272,37 @@ export class AppModel extends Signals.EventEmitter {
     _reload() {
         const infos = this._visibleAppInfos();
         const visible = new Map(infos.map(i => [i.get_id(), i]));
-        const lookup = id => (visible.has(id) ? this._appSys.lookup_app(id) : null);
         const known = new Set(this._settings.get_strv('known-apps'));
         this._newApps = new Set([...visible.keys()].filter(id => known.size && !known.has(id)));
 
+        const groups = this._buildGroups(infos, visible);
+        const orders = this._orders();
+        for (const g of groups)
+            this._sortApps(g, orders);
+
+        this._groupOf.clear();
+        for (const g of groups) {
+            for (const app of g.apps) {
+                if (!this._groupOf.has(app.id))
+                    this._groupOf.set(app.id, g);
+            }
+        }
+
+        const prev = new Map(this.folders.map(f => [f.id, f]));
+        const structural = idsKey(this.folders) !== idsKey(groups);
+        const changed = new Set();
+        for (const g of groups) {
+            const p = prev.get(g.id);
+            if (!p || p.name !== g.name || idsKey(p.apps) !== idsKey(g.apps))
+                changed.add(g.id);
+        }
+        this.folders = groups;
+        if (structural || changed.size)
+            this.emit('changed', structural, changed);
+    }
+
+    _buildGroups(infos, visible) {
+        const lookup = id => (visible.has(id) ? this._appSys.lookup_app(id) : null);
         const groups = [];
         const placed = new Set();
         const folderIds = this._folderSettings.get_strv('folder-children');
@@ -283,26 +313,9 @@ export class AppModel extends Signals.EventEmitter {
             }
         }
 
-        // real folders, the way FolderView._loadApps builds them
         for (const id of folderIds) {
             const s = this._folderChild(id);
-            const excluded = s.get_strv('excluded-apps');
-            const apps = [];
-            const add = appId => {
-                if (excluded.includes(appId) || this._favorites.isFavorite(appId))
-                    return;
-                const app = lookup(appId);
-                if (app && !apps.includes(app))
-                    apps.push(app);
-            };
-            s.get_strv('apps').forEach(add);
-            const cats = s.get_strv('categories');
-            if (cats.length) {
-                for (const info of infos) {
-                    if (categoriesOf(info).some(c => cats.includes(c)))
-                        add(info.get_id());
-                }
-            }
+            const apps = this._folderApps(s, infos, lookup);
             if (!apps.length)
                 continue;
             apps.forEach(a => placed.add(a.id));
@@ -328,30 +341,26 @@ export class AppModel extends Signals.EventEmitter {
                     groups.push(g);
             }
         }
+        return groups;
+    }
 
-        const orders = this._orders();
-        for (const g of groups)
-            this._sortApps(g, orders);
-
-        this._groupOf.clear();
-        for (const g of groups) {
-            for (const app of g.apps) {
-                if (!this._groupOf.has(app.id))
-                    this._groupOf.set(app.id, g);
-            }
+    // a real folder's apps, the way the stock FolderView._loadApps collects them
+    _folderApps(settings, infos, lookup) {
+        const excluded = settings.get_strv('excluded-apps');
+        const cats = settings.get_strv('categories');
+        const ids = [
+            ...settings.get_strv('apps'),
+            ...infos.filter(i => categoriesOf(i).some(c => cats.includes(c))).map(i => i.get_id()),
+        ];
+        const apps = [];
+        for (const id of ids) {
+            if (excluded.includes(id) || this._favorites.isFavorite(id))
+                continue;
+            const app = lookup(id);
+            if (app && !apps.includes(app))
+                apps.push(app);
         }
-
-        const prev = new Map(this.folders.map(f => [f.id, f]));
-        const structural = this.folders.map(f => f.id).join('\n') !== groups.map(g => g.id).join('\n');
-        const changed = new Set();
-        for (const g of groups) {
-            const p = prev.get(g.id);
-            if (!p || p.name !== g.name || p.apps.map(a => a.id).join('\n') !== g.apps.map(a => a.id).join('\n'))
-                changed.add(g.id);
-        }
-        this.folders = groups;
-        if (structural || changed.size)
-            this.emit('changed', structural, changed);
+        return apps;
     }
 
     // Category groups for people without folders, kept stable in the

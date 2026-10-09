@@ -76,15 +76,15 @@ export class SearchEngine extends Signals.EventEmitter {
 
     setQuery(text) {
         const terms = termsFor(text);
-        const prev = this._terms;
-        this._terms = terms;
-        this._cancel();
         if (!terms.length) {
             this.reset();
             this.emit('apps', []);
             this.emit('others', []);
             return;
         }
+        const prev = this._terms;
+        this._terms = terms;
+        this._cancel();
         // like the overview: a query that only extends the last one can
         // narrow the previous provider results
         const sub = prev.length > 0 && terms.length >= prev.length &&
@@ -157,40 +157,48 @@ export class SearchEngine extends Signals.EventEmitter {
             this.emit('others', this.others);
         };
         await Promise.all(providers.map(async provider => {
+            let found;
             try {
-                const prev = this._previous[provider.id];
-                let ids = sub && prev
-                    ? await provider.getSubsearchResultSet(prev, terms, cancellable)
-                    : await provider.getInitialResultSet(terms, cancellable);
-                if (cancellable.is_cancelled())
-                    return;
-                this._previous[provider.id] = ids;
-                ids = provider.filterResults(ids, PER_PROVIDER);
-                if (!ids.length) {
-                    if (results.delete(provider))
-                        publish();
-                    return;
-                }
-                const metas = await provider.getResultMetas(ids, cancellable);
-                if (cancellable.is_cancelled())
-                    return;
-                const source = provider.appInfo?.get_name() ?? '';
-                results.set(provider, metas.map(m => ({
-                    kind: 'provider',
-                    id: m.id,
-                    name: m.name,
-                    source,
-                    createIcon: m.createIcon,
-                    provider,
-                })));
-                publish();
+                found = await this._queryProvider(provider, terms, sub, cancellable);
             } catch (e) {
-                if (!isCancelled(e)) {
-                    console.debug(`cubby: provider ${provider.id}: ${e.message}`);
-                    if (results.delete(provider))
-                        publish();
-                }
+                if (isCancelled(e))
+                    return;
+                console.debug(`cubby: provider ${provider.id}: ${e.message}`);
+                found = [];
             }
+            if (!found)
+                return;
+            if (found.length)
+                results.set(provider, found);
+            else if (!results.delete(provider))
+                return;
+            publish();
+        }));
+    }
+
+    // a provider's top results, or null if the query was cancelled meanwhile
+    async _queryProvider(provider, terms, sub, cancellable) {
+        const prev = this._previous[provider.id];
+        const ids = sub && prev
+            ? await provider.getSubsearchResultSet(prev, terms, cancellable)
+            : await provider.getInitialResultSet(terms, cancellable);
+        if (cancellable.is_cancelled())
+            return null;
+        this._previous[provider.id] = ids;
+        const top = provider.filterResults(ids, PER_PROVIDER);
+        if (!top.length)
+            return [];
+        const metas = await provider.getResultMetas(top, cancellable);
+        if (cancellable.is_cancelled())
+            return null;
+        const source = provider.appInfo?.get_name() ?? '';
+        return metas.map(m => ({
+            kind: 'provider',
+            id: m.id,
+            name: m.name,
+            source,
+            createIcon: m.createIcon,
+            provider,
         }));
     }
 
@@ -205,7 +213,8 @@ export class SearchEngine extends Signals.EventEmitter {
      * Where Enter goes when nothing matches: GNOME Software's search, or
      * App Center (which has no search entry point, so it just opens).
      *
-     * @returns {{name: string, run: Function}|null}
+     * @returns {{name: string, run: Function, open?: boolean}|null} open
+     *   is set when the app only opens, without the search terms
      */
     softwareFallback() {
         const software = this._providers().find(p => SOFTWARE_IDS.includes(p.appInfo?.get_id()));
