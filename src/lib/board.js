@@ -13,6 +13,7 @@ import {Frost} from './frost.js';
 import {drawDashed} from './drawing.js';
 import {Tile} from './tile.js';
 import * as L from './layoutEngine.js';
+import {extents, findAncestor, readJson, setStyleClass} from './util.js';
 
 export const PAGE_MS = 380;
 const DOTS_GAP = 18;
@@ -138,22 +139,18 @@ export const Board = GObject.registerClass({
         for (const tile of this.tiles.values()) {
             if (!tile.visible || tile.opacity === 0)
                 continue;
-            const e = tile.get_transformed_extents();
-            const x = e.get_x() - bx, y = e.get_y() - by;
-            if (x + e.get_width() < 0 || x > this.width)
+            const e = extents(tile);
+            const x = e.x - bx, y = e.y - by;
+            if (x + e.width < 0 || x > this.width)
                 continue;
-            rects.push({x, y, width: e.get_width(), height: e.get_height(), alpha: tile.opacity / 255});
+            rects.push({x, y, width: e.width, height: e.height, alpha: tile.opacity / 255});
         }
         const scale = [...this.tiles.values()][0]?.scale_x ?? 1;
         this._frost.setRects(rects, 32 * scale * this.grid.sf);
     }
 
     _stored() {
-        try {
-            return JSON.parse(this._settings.get_string('layouts') || '{}');
-        } catch {
-            return {};
-        }
+        return readJson(this._settings, 'layouts');
     }
 
     _resolve() {
@@ -246,10 +243,7 @@ export const Board = GObject.registerClass({
         this.editing = on;
         // tiles rotate while wiggling; the mask does not, so fade it out
         this._frost?.ease({opacity: on ? 0 : 255, duration: 200});
-        if (on)
-            this.add_style_class_name('cubby-board-editing');
-        else
-            this.remove_style_class_name('cubby-board-editing');
+        setStyleClass(this, 'cubby-board-editing', on);
         if (on && !this._placeholders) {
             this._placeholders = new St.DrawingArea({reactive: false, opacity: 0});
             this._placeholders.connect('repaint', a => this._drawPlaceholders(a));
@@ -389,10 +383,7 @@ export const Board = GObject.registerClass({
 
     _syncDotState() {
         this._dots.get_children().forEach((d, i) => {
-            if (i === this.page)
-                d.add_style_pseudo_class('checked');
-            else
-                d.remove_style_pseudo_class('checked');
+            d.checked = i === this.page;
         });
     }
 
@@ -436,10 +427,6 @@ export const Board = GObject.registerClass({
     }
 
     tileFor(actor) {
-        for (let a = actor; a; a = a.get_parent()) {
-            if (a instanceof Tile)
-                return a;
-        }
-        return null;
+        return findAncestor(actor, a => a instanceof Tile);
     }
 });

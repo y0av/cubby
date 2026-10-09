@@ -18,6 +18,7 @@ import {AppIcon, accessibleName, addPressFeedback, runningText} from './appIcon.
 import {drawDashed} from './drawing.js';
 import {tileContent} from './layoutEngine.js';
 import {cairoRgba} from './theme.js';
+import {findAncestor} from './util.js';
 
 const SLOT_MARGIN = 8;
 const NAME_GAP = 11;
@@ -465,10 +466,6 @@ class Tile extends St.Widget {
 
     /** 'move', 'resize' or null: which handle an event source belongs to. */
     handleFor(actor) {
-        for (let a = actor; a && a !== this; a = a.get_parent()) {
-            if (a.handleKind)
-                return a.handleKind;
-        }
-        return null;
+        return findAncestor(actor, a => a.handleKind, this)?.handleKind ?? null;
     }
 });

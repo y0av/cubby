@@ -9,6 +9,8 @@ import Gio from 'gi://Gio';
 
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
+import {setStyleClass} from './util.js';
+
 const ACCENTS = {
     blue: '#3584e4',
     teal: '#2190a4',
@@ -52,6 +54,12 @@ export function luminance([r, g, b]) {
     return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
+/** Switches an actor between the cubby-dark and cubby-light styles. */
+export function applyColorScheme(actor, dark) {
+    setStyleClass(actor, 'cubby-dark', dark);
+    setStyleClass(actor, 'cubby-light', !dark);
+}
+
 export function contrast(a, b) {
     const [l1, l2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
     return (l1 + 0.05) / (l2 + 0.05);
@@ -79,9 +87,9 @@ export class Theme extends Signals.EventEmitter {
     }
 
     get accent() {
-        const custom = this._settings.get_string('accent-override');
-        if (parseHex(custom))
-            return `#${parseHex(custom).map(c => c.toString(16).padStart(2, '0')).join('')}`;
+        const custom = parseHex(this._settings.get_string('accent-override'));
+        if (custom)
+            return `#${custom.map(c => c.toString(16).padStart(2, '0')).join('')}`;
         return ACCENTS[this._iface.get_string('accent-color')] ?? ACCENTS.blue;
     }
 

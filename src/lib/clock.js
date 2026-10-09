@@ -15,6 +15,7 @@ import St from 'gi://St';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {contrast, luminance} from './theme.js';
+import {setStyleClass} from './util.js';
 
 const HALO_SIZE = 300;
 const HALO_STRETCH = 8 / 3;
@@ -75,10 +76,7 @@ class Clock extends St.BoxLayout {
     }
 
     setBright(bright) {
-        if (bright)
-            this.add_style_class_name('cubby-clock-on-bright');
-        else
-            this.remove_style_class_name('cubby-clock-on-bright');
+        setStyleClass(this, 'cubby-clock-on-bright', bright);
     }
 
     _update() {

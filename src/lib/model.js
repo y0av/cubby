@@ -14,6 +14,8 @@ import * as ParentalControlsManager from 'resource:///org/gnome/shell/misc/paren
 import * as AppFavorites from 'resource:///org/gnome/shell/ui/appFavorites.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {readJson} from './util.js';
+
 const FOLDERS_SCHEMA = 'org.gnome.desktop.app-folders';
 const FOLDER_SCHEMA = 'org.gnome.desktop.app-folders.folder';
 const UNSORTED_ID = 'cubby:unsorted';
@@ -178,12 +180,7 @@ export class AppModel extends Signals.EventEmitter {
     }
 
     _orders() {
-        try {
-            const o = JSON.parse(this._settings.get_string('folder-orders') || '{}');
-            return o && typeof o === 'object' ? o : {};
-        } catch {
-            return {};
-        }
+        return readJson(this._settings, 'folder-orders');
     }
 
     // the user's order first (if any), then the rest most used first
@@ -360,13 +357,7 @@ export class AppModel extends Signals.EventEmitter {
     // Category groups for people without folders, kept stable in the
     // extension's own settings (never in org.gnome.desktop.app-folders).
     _categoryGroups(apps, visible) {
-        let stored;
-        try {
-            stored = JSON.parse(this._settings.get_string('virtual-groups') || '{}');
-        } catch {
-            stored = {};
-        }
-        const assign = stored.assign ?? {};
+        const assign = readJson(this._settings, 'virtual-groups').assign ?? {};
         let dirty = false;
         const byGroup = new Map();
         for (const app of apps) {

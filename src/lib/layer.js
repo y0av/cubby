@@ -28,8 +28,10 @@ import {ResultsPanel} from './results.js';
 import {Scrim, scrimAlpha} from './scrim.js';
 import {SearchMode} from './searchMode.js';
 import {SearchPill} from './searchPill.js';
+import {applyColorScheme} from './theme.js';
 import {Tooltip} from './tooltip.js';
 import {animateClose, animateLaunch, animateOpen, easeBlur, resetLaunchIcon, settleTile} from './transitions.js';
+import {extents, findAncestor} from './util.js';
 import {WallpaperWatcher} from './wallpaper.js';
 import {WindowDimmer} from './windowDimmer.js';
 
@@ -63,11 +65,6 @@ function scaleGrid(g, sf) {
     for (const k of px)
         out[k] = Math.round(g[k] * sf);
     return out;
-}
-
-function extents(actor) {
-    const e = actor.get_transformed_extents();
-    return {x: e.get_x(), y: e.get_y(), width: e.get_width(), height: e.get_height()};
 }
 
 function isPrintable(event) {
@@ -360,8 +357,8 @@ export const Layer = GObject.registerClass({
 
     _tileRect(tile) {
         const [lx, ly] = this.get_transformed_position();
-        const e = tile.get_transformed_extents();
-        return {x: e.get_x() - lx, y: e.get_y() - ly, width: e.get_width(), height: e.get_height()};
+        const r = extents(tile);
+        return {...r, x: r.x - lx, y: r.y - ly};
     }
 
     activateResult(item) {
@@ -432,8 +429,7 @@ export const Layer = GObject.registerClass({
         this._menu.setDark(dark);
         if (this._edit.active)
             this._edit.syncAccent();
-        this.remove_style_class_name(dark ? 'cubby-light' : 'cubby-dark');
-        this.add_style_class_name(dark ? 'cubby-dark' : 'cubby-light');
+        applyColorScheme(this, dark);
         this.pill.setAccent(this._theme);
         this._syncWallpaper();
         this._paint(this._selected, !!this._selected && this._showSelection());
@@ -880,11 +876,7 @@ export const Layer = GObject.registerClass({
 
     // The app item (tile slot, folder app or search result) an actor is in.
     _appItemFor(actor) {
-        for (let a = actor; a && a !== this; a = a.get_parent()) {
-            if (a.kind === 'app' && a.app)
-                return a;
-        }
-        return null;
+        return findAncestor(actor, a => a.kind === 'app' && a.app, this);
     }
 
     // GNOME's own app menu (New Window, app actions, Pin, App Details,
@@ -1131,8 +1123,8 @@ export const Layer = GObject.registerClass({
         }
         if (this.mode !== Mode.BOARD)
             return false;
-        const e = (this._selected ?? this.pill).get_transformed_extents();
-        this._menu.open(e.get_x() + e.get_width() / 2, e.get_y() + e.get_height() / 2);
+        const e = extents(this._selected ?? this.pill);
+        this._menu.open(e.x + e.width / 2, e.y + e.height / 2);
         return true;
     }
 

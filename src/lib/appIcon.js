@@ -12,6 +12,8 @@ import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {setStyleClass} from './util.js';
+
 const MAX_PIPS = 3;
 const PRESS_SCALE = 0.95;
 
@@ -66,12 +68,8 @@ class Pips extends St.BoxLayout {
             this.get_last_child().destroy();
         while (this.get_n_children() < count)
             this.add_child(new St.Widget({style_class: 'cubby-pip'}));
-        this.get_children().forEach((pip, i) => {
-            if (i === 0 && focused && !this._small)
-                pip.add_style_class_name('cubby-pip-focused');
-            else
-                pip.remove_style_class_name('cubby-pip-focused');
-        });
+        this.get_children().forEach((pip, i) =>
+            setStyleClass(pip, 'cubby-pip-focused', i === 0 && focused && !this._small));
         this.visible = count > 0;
     }
 });
