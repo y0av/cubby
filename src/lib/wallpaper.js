@@ -11,11 +11,16 @@ import Gio from 'gi://Gio';
 
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
+import {parseHex} from './theme.js';
+import {isCancelled} from './util.js';
+
 const DECODE_W = 192;
 const SAMPLE_W = 96;
 const DEFAULT_LUMINANCE = 0.3;
 
-/** Mean of 0.2126R + 0.7152G + 0.0722B over the pixels, 0..1. */
+// 0.2126R + 0.7152G + 0.0722B on the stored (not linearised) values, 0..1
+const luma = (r, g, b) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
 function meanLuminance(pixbuf) {
     const px = pixbuf.get_pixels();
     const n = pixbuf.get_n_channels(), stride = pixbuf.get_rowstride();
@@ -24,18 +29,15 @@ function meanLuminance(pixbuf) {
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
             const i = y * stride + x * n;
-            sum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+            sum += luma(px[i], px[i + 1], px[i + 2]);
         }
     }
     return sum / (w * h);
 }
 
 function colorLuminance(hex) {
-    const m = /^#?([0-9a-f]{6})/i.exec(hex ?? '');
-    if (!m)
-        return DEFAULT_LUMINANCE;
-    const n = parseInt(m[1], 16);
-    return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+    const rgb = parseHex(hex);
+    return rgb ? luma(...rgb) : DEFAULT_LUMINANCE;
 }
 
 /** Emits 'changed' (luminance) when the wallpaper or colour scheme changes. */
@@ -122,34 +124,13 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         const cancellable = new Gio.Cancellable();
         this._cancellable = cancellable;
         const uri = this._uri();
-        let lum, sample = null;
+        let lum = DEFAULT_LUMINANCE, sample = null;
         if (this._bg.get_string('picture-options') === 'none' || !uri || uri.endsWith('.xml')) {
             // plain colour, or a slideshow we don't decode
             lum = colorLuminance(this._bg.get_string('primary-color'));
         } else {
             try {
-                const file = Gio.File.new_for_uri(uri);
-                const stream = await new Promise((resolve, reject) => {
-                    file.read_async(0, cancellable, (f, res) => {
-                        try {
-                            resolve(f.read_finish(res));
-                        } catch (e) {
-                            reject(e);
-                        }
-                    });
-                });
-                const decoded = await new Promise((resolve, reject) => {
-                    GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, DECODE_W, -1, true,
-                        cancellable, (_s, res) => {
-                            try {
-                                resolve(GdkPixbuf.Pixbuf.new_from_stream_finish(res));
-                            } catch (e) {
-                                reject(e);
-                            }
-                        });
-                });
-                stream.close_async(0, null, null);
-                const pixbuf = this._cropToMonitor(decoded);
+                const pixbuf = this._cropToMonitor(await this._decode(uri, cancellable));
                 lum = meanLuminance(pixbuf);
                 sample = {
                     data: pixbuf.get_pixels(),
@@ -159,9 +140,8 @@ export class WallpaperWatcher extends Signals.EventEmitter {
                     height: pixbuf.get_height(),
                 };
             } catch (e) {
-                if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                if (isCancelled(e))
                     return;
-                lum = DEFAULT_LUMINANCE;
             }
         }
         if (cancellable.is_cancelled())
@@ -169,5 +149,33 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         this.sample = sample;
         this.luminance = lum;
         this.emit('changed', lum);
+    }
+
+    /** Decodes the image at `uri`, DECODE_W pixels wide. */
+    async _decode(uri, cancellable) {
+        const file = Gio.File.new_for_uri(uri);
+        const stream = await new Promise((resolve, reject) => {
+            file.read_async(0, cancellable, (f, res) => {
+                try {
+                    resolve(f.read_finish(res));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+        try {
+            return await new Promise((resolve, reject) => {
+                GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, DECODE_W, -1, true,
+                    cancellable, (_s, res) => {
+                        try {
+                            resolve(GdkPixbuf.Pixbuf.new_from_stream_finish(res));
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+            });
+        } finally {
+            stream.close_async(0, null, null);
+        }
     }
 }
