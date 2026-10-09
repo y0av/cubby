@@ -2,9 +2,6 @@
 // SPDX-FileCopyrightText: 2026 y0av
 
 // Routes every "show the app grid" request to the layer.
-//
-// See DECISIONS.md "Entry points" for where each route lands in the shell
-// and in Dash to Panel / Ubuntu Dock.
 
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
