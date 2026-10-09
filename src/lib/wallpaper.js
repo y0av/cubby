@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// A small sample of the current wallpaper, decoded once per wallpaper change
-// (asynchronously) and cropped to the monitor's shape the way the "zoom"
-// option shows it. Its mean luminance drives the scrim and the clock
-// colour; the sample itself feeds the clock halo and the frosted glass.
+// A 96px wide sample of the wallpaper. The scrim and clock go by its mean
+// luminance; the clock halo and frosted glass use the pixels.
 
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
@@ -18,7 +16,7 @@ const DECODE_W = 192;
 const SAMPLE_W = 96;
 const DEFAULT_LUMINANCE = 0.3;
 
-// 0.2126R + 0.7152G + 0.0722B on the stored (not linearised) values, 0..1
+// on the gamma-encoded values, unlike luminance() in theme.js
 const luma = (r, g, b) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
 function meanLuminance(pixbuf) {
@@ -40,9 +38,10 @@ function colorLuminance(hex) {
     return rgb ? luma(...rgb) : DEFAULT_LUMINANCE;
 }
 
-/** Emits 'changed' (luminance) when the wallpaper or colour scheme changes. */
+// Emits 'changed' when the wallpaper changes, including a switch between its
+// light and dark versions.
 export class WallpaperWatcher extends Signals.EventEmitter {
-    /** @param {Function} aspect - returns the monitor's width / height */
+    // aspect() returns the monitor's width / height
     constructor(aspect = () => 16 / 10) {
         super();
         this._aspect = aspect;
@@ -62,10 +61,7 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         this._iface.disconnectObject(this);
     }
 
-    /**
-     * Brightest and darkest sampled pixel (WCAG relative luminance) in a
-     * region given as fractions of the wallpaper, or null without a sample.
-     */
+    // the region is in fractions of the wallpaper; null until there's a sample
     regionExtremes(fx0, fy0, fx1, fy1, relLum) {
         const smp = this.sample;
         if (!smp)
@@ -91,7 +87,7 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         return {brightest, darkest};
     }
 
-    // centre crop to the monitor's aspect (what "zoom" shows), then shrink
+    // a centre crop to the monitor's aspect is what the "zoom" option shows
     _cropToMonitor(pb) {
         const A = this._aspect();
         let w = pb.get_width(), h = pb.get_height(), x = 0, y = 0;
@@ -108,7 +104,7 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         return sub.scale_simple(SAMPLE_W, Math.max(1, Math.round(SAMPLE_W / A)), GdkPixbuf.InterpType.BILINEAR);
     }
 
-    /** Re-reads the wallpaper (the monitor's shape changed). */
+    // for when the monitor's aspect changes
     refresh() {
         this._update();
     }
@@ -151,7 +147,6 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         this.emit('changed', lum);
     }
 
-    /** Decodes the image at `uri`, DECODE_W pixels wide. */
     async _decode(uri, cancellable) {
         const file = Gio.File.new_for_uri(uri);
         const stream = await new Promise((resolve, reject) => {

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// An app's icon as tiles, folders and search results show it: the icon,
-// a bar of window pips under it and, for apps installed since the last
-// open, a "New" marker.
-
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
@@ -25,7 +21,6 @@ export function runningText(app) {
     return ngettext('running, %d window', 'running, %d windows', n).format(n);
 }
 
-/** Name for screen readers, with the running state and any extra text. */
 export function accessibleName(app, ...extra) {
     return [app.get_name(), ...extra, runningText(app)].filter(Boolean).join(', ');
 }
@@ -44,8 +39,8 @@ export function addPressFeedback(button) {
     });
 }
 
-// One pip per window up to three, the focused app's first pip wide. The
-// pips stay neutral: the accent colour means "selected".
+// One pip per window, at most three, the first one wide for the focused app.
+// They never take the accent colour, which marks the selection.
 const Pips = GObject.registerClass(
 class Pips extends St.BoxLayout {
     _init(small) {
@@ -76,13 +71,7 @@ class Pips extends St.BoxLayout {
 
 export const AppIcon = GObject.registerClass(
 class AppIcon extends St.Widget {
-    /**
-     * @param {Shell.App} app
-     * @param {number} size - icon size in pixels
-     * @param {object} [params]
-     * @param {boolean} [params.small] - a mini icon in an overflow preview
-     * @param {boolean} [params.isNew] - installed since the last open
-     */
+    // small is for the mini icons in an overflow preview
     _init(app, size, {small = false, isNew = false} = {}) {
         super._init({
             layout_manager: new Clutter.BinLayout(),

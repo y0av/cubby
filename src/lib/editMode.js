@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Edit mode: drag a tile to move it, drag its round corner handle to
-// resize, or use the keyboard (arrows move, Shift+arrows resize). Every
-// change is snapped to the grid, checked for overlap, and saved.
-
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
@@ -38,13 +34,13 @@ export class EditMode {
         this._decorateTiles();
     }
 
-    /** Gives tiles created while editing (a new folder) their decorations. */
+    // a folder created while editing needs decorating too
     refresh() {
         if (this.active)
             this._decorateTiles();
     }
 
-    // staggered wiggle phases, so the tiles don't move in step
+    // staggered so the tiles don't wiggle in sync
     _decorateTiles() {
         const wiggle = St.Settings.get().enable_animations;
         [...this._board.tiles.values()].forEach((t, i) => {
@@ -74,15 +70,8 @@ export class EditMode {
         return this._drag !== null;
     }
 
-    // ---- pointer ----
-
-    /**
-     * @param {Tile} tile
-     * @param {string} kind - 'move' or 'resize'
-     * @param {number} x - stage x of the pointer
-     * @param {number} y - stage y of the pointer
-     * @param {Clutter.Actor} grabActor - receives all pointer events while dragging
-     */
+    // x, y are stage coordinates; grabActor gets every pointer event until
+    // the drag ends
     beginDrag(tile, kind, x, y, grabActor) {
         const b = this._board;
         const [, sx, sy] = b.strip.transform_stage_point(x, y);
@@ -170,7 +159,7 @@ export class EditMode {
         return canPlace(b.rects, id, r, b.grid.cols, b.grid.rows) && r.page < b.nPages;
     }
 
-    // Holding a dragged tile near the left or right edge flips the page.
+    // holding a dragged tile near the left or right edge flips the page
     _edgeCheck(x) {
         const b = this._board;
         const [lx] = b.get_transformed_position();
@@ -207,16 +196,8 @@ export class EditMode {
         this._followId = 0;
     }
 
-    // ---- keyboard ----
-
-    /**
-     * Arrows move the focused tile one cell (skipping over tiles in the
-     * way, onto the next page past the edge); Shift+arrows resize it.
-     *
-     * @param {Tile} tile
-     * @param {number[]} dir - [dx, dy]
-     * @param {boolean} resize
-     */
+    // Arrows move the tile, jumping over tiles in the way and onto the next
+    // page past the edge. With resize (Shift held) they change its size.
     key(tile, dir, resize) {
         if (!tile)
             return;
@@ -234,7 +215,7 @@ export class EditMode {
             if (cand.y < 0 || cand.y + cand.h > g.rows)
                 return;
             if (cand.x < 0 || cand.x + cand.w > g.cols) {
-                // past the side edge: continue on the neighbouring page
+                // off the side, so try the neighbouring page
                 const page = r.page + dir[0];
                 if (dir[1] !== 0 || page < 0 || page >= b.nPages)
                     return;

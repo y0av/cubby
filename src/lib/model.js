@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// What goes on the board: folders from org.gnome.desktop.app-folders (read
-// only), an "Unsorted" group for the rest, or generated category groups for
-// people who never made folders. Apps inside a group are ordered by usage.
+// The user's app folders, which are only ever read, plus "Unsorted" for the
+// rest, or category groups for people who never made folders.
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -26,7 +25,7 @@ const VIRTUAL_PREFIX = 'cubby:cat:';
 // category groups instead of one huge "Unsorted".
 const DEFAULT_FOLDER_IDS = ['System', 'Utilities', 'YaST', 'Pardus'];
 
-// freedesktop main categories, in the order an app is assigned to them
+// an app joins the first group that lists one of its categories
 const CATEGORY_GROUPS = [
     {id: 'Game', cats: ['Game'], name: () => _('Games')},
     {id: 'Development', cats: ['Development'], name: () => _('Development')},
@@ -58,12 +57,8 @@ function folderName(settings) {
     return name;
 }
 
-/**
- * Emits:
- *  - 'changed' (structural: boolean, changedIds: Set) after folders reload
- *  - 'running-changed' (app) when an app starts, stops or changes windows
- *  - 'focus-changed' (oldApp, newApp)
- */
+// Emits 'changed' (structural, changedIds) after a reload, 'running-changed'
+// (app) and 'focus-changed' (oldApp, newApp).
 export class AppModel extends Signals.EventEmitter {
     constructor(settings) {
         super();
@@ -126,7 +121,7 @@ export class AppModel extends Signals.EventEmitter {
         return this._focusApp;
     }
 
-    /** Folder (group) containing an app, or null (pinned or hidden). */
+    // null for pinned and hidden apps
     groupOf(appId) {
         return this._groupOf.get(appId) ?? null;
     }
@@ -143,7 +138,7 @@ export class AppModel extends Signals.EventEmitter {
         return this.folders.find(f => f.id === id) ?? null;
     }
 
-    /** Re-sort apps by usage; emits 'changed' for folders whose order moved. */
+    // emits 'changed' only for folders whose order moved
     refreshUsage() {
         const orders = this._orders();
         const changed = new Set();
@@ -157,15 +152,11 @@ export class AppModel extends Signals.EventEmitter {
             this.emit('changed', false, changed);
     }
 
-    /** Whether the user has put this folder's apps in their own order. */
     hasCustomOrder(folderId) {
         return Array.isArray(this._orders()[folderId]);
     }
 
-    /**
-     * Stores the user's order for a folder (null goes back to most used
-     * first) and re-sorts it. Kept in the extension's own settings.
-     */
+    // null goes back to most used first
     setFolderOrder(folderId, appIds) {
         const orders = this._orders();
         if (appIds)
@@ -197,7 +188,7 @@ export class AppModel extends Signals.EventEmitter {
         });
     }
 
-    /** Folders most used first, as {id, count} for layout generation. */
+    // most used first, for generating a layout
     foldersByUsage() {
         const rank = new Map(this._usage.get_most_used().map((app, i) => [app.id, i]));
         const n = rank.size || 1;
@@ -208,7 +199,7 @@ export class AppModel extends Signals.EventEmitter {
             .sort((a, b) => b.score - a.score || b.count - a.count || a.i - b.i);
     }
 
-    /** Records the current apps as seen, clearing "New" markers. */
+    // clears the "New" markers
     markAllSeen() {
         const ids = this._visibleAppInfos().map(i => i.get_id()).sort();
         const known = this._settings.get_strv('known-apps').slice().sort();
@@ -222,7 +213,7 @@ export class AppModel extends Signals.EventEmitter {
     }
 
     _initKnownApps() {
-        // first run: nothing is "new"
+        // on first run nothing counts as new
         if (this._settings.get_strv('known-apps').length === 0) {
             const ids = this._visibleAppInfos().map(i => i.get_id());
             if (ids.length)
@@ -246,7 +237,7 @@ export class AppModel extends Signals.EventEmitter {
 
     _visibleAppInfos() {
         return this._appSys.get_installed().filter(info => {
-            // as the stock app grid does: skip desktop files with invalid encodings
+            // throws for badly encoded desktop files, which the stock grid skips too
             try {
                 info.get_id();
             } catch {
@@ -344,7 +335,7 @@ export class AppModel extends Signals.EventEmitter {
         return groups;
     }
 
-    // a real folder's apps, the way the stock FolderView._loadApps collects them
+    // same rules as the stock FolderView._loadApps
     _folderApps(settings, infos, lookup) {
         const excluded = settings.get_strv('excluded-apps');
         const cats = settings.get_strv('categories');
@@ -363,8 +354,8 @@ export class AppModel extends Signals.EventEmitter {
         return apps;
     }
 
-    // Category groups for people without folders, kept stable in the
-    // extension's own settings (never in org.gnome.desktop.app-folders).
+    // Assignments are saved so apps don't move between groups, in our own
+    // settings and never in org.gnome.desktop.app-folders.
     _categoryGroups(apps, visible) {
         const assign = readJson(this._settings, 'virtual-groups').assign ?? {};
         let dirty = false;

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// The board: folder tiles on the shared cell grid, split into pages when
-// they don't fit, with the layout read from and saved to the extension's
-// settings.
+// Folder tiles on the cell grid, paged. The 'layouts' setting keeps one
+// layout per grid size.
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
@@ -86,7 +85,6 @@ export const Board = GObject.registerClass({
         return this._monW;
     }
 
-    /** New grid metrics (monitor, work area, clock or scale changed). */
     setGrid(grid, monitorWidth, monitorHeight) {
         this.grid = grid;
         this._monW = monitorWidth;
@@ -95,9 +93,7 @@ export const Board = GObject.registerClass({
         this._resolve();
     }
 
-    // ---- frosted glass ----
-
-    /** The wallpaper sample changed (or became null for a plain colour). */
+    // null for a plain colour wallpaper
     setFrostSample(sample) {
         this._frostSample = sample;
         this._frost?.setSample(sample);
@@ -123,7 +119,7 @@ export const Board = GObject.registerClass({
         this._syncFrostTracking();
     }
 
-    // follow the tiles on every frame that is drawn while the board shows
+    // track the tiles on every frame drawn while the board is mapped
     _syncFrostTracking() {
         global.stage.disconnectObject(this);
         if (this._frost && this.mapped) {
@@ -166,7 +162,6 @@ export const Board = GObject.registerClass({
         this._apply(tiles);
     }
 
-    /** Saves the current layout for this grid (after an edit). */
     save(tiles = this.rects) {
         const {cols, rows} = this.grid;
         this._write(L.storeLayout(this._stored(), cols, rows, tiles));
@@ -181,7 +176,7 @@ export const Board = GObject.registerClass({
         }
     }
 
-    /** Forgets every stored layout and generates a new one. */
+    // forgets the layouts of every grid size, not just this one
     reset() {
         this._write({});
         this._resolve();
@@ -212,7 +207,7 @@ export const Board = GObject.registerClass({
         this.emit('layout-changed');
     }
 
-    /** Pixel rect of a grid rect on its page, in board coordinates. */
+    // board pixels, with the pages side by side
     pixelRect(r) {
         const c = L.cellRect(this.grid, r);
         return {
@@ -241,8 +236,6 @@ export const Board = GObject.registerClass({
     _pageCount() {
         return L.pageCount(this.rects) + (this.editing ? 1 : 0);
     }
-
-    // ---- edit mode ----
 
     setEditing(on) {
         this.editing = on;
@@ -329,7 +322,6 @@ export const Board = GObject.registerClass({
         this._ghost?.hide();
     }
 
-    /** Moves or resizes one tile (edit mode), optionally saving. */
     moveTile(id, rect, {animate = false, save = false} = {}) {
         this.rects = {...this.rects, [id]: {...rect}};
         const tile = this.tiles.get(id);
@@ -364,8 +356,6 @@ export const Board = GObject.registerClass({
         const tile = g && this.tiles.get(g.id);
         tile?.updateRunning(app);
     }
-
-    // ---- pages ----
 
     _syncDots() {
         this._dots.destroy_all_children();
@@ -424,14 +414,12 @@ export const Board = GObject.registerClass({
         return Clutter.EVENT_STOP;
     }
 
-    /** All slot actors on the current page, in reading order. */
     focusables(page = this.page) {
         return L.readingOrder(this.rects)
             .filter(id => this.rects[id].page === page)
             .flatMap(id => this.tiles.get(id)?.slots ?? []);
     }
 
-    /** Every tile in reading order: page, row, column. */
     tilesInOrder() {
         return L.readingOrder(this.rects).map(id => this.tiles.get(id));
     }

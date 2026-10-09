@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Folder view: the tile's rectangle grows into a centred glass panel with
-// every app in the folder; closing shrinks it back into the tile. Apps can
-// be dragged (or moved with Alt+arrows) into the user's own order. Each
-// folder's grid is built once and kept, so reopening a folder is instant.
+// Each folder's grid is built once and kept, so reopening it is instant.
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
@@ -39,7 +36,7 @@ function gridSize(n) {
     return {cols: Math.max(1, Math.min(MAX_COLS, n)), rows: Math.ceil(n / MAX_COLS)};
 }
 
-/** Top-left of slot i of n, with the last row centred. */
+// the last row is centred
 function slotPos(i, n) {
     const {cols, rows} = gridSize(n);
     const row = Math.floor(i / MAX_COLS);
@@ -89,7 +86,6 @@ class FolderItem extends St.Button {
     }
 });
 
-/** One folder's items, kept between opens. */
 const FolderGrid = GObject.registerClass(
 class FolderGrid extends St.Viewport {
     _init(view, folder) {
@@ -105,7 +101,7 @@ class FolderGrid extends St.Viewport {
         this.relayout(false);
     }
 
-    /** Same apps (in any order) and names: the grid can be reused. */
+    // equal keys mean the same apps and names, so the grid can be reused
     static keyFor(folder) {
         return folder.apps.map(a => `${a.id}=${a.get_name()}`).sort().join('\n');
     }
@@ -137,7 +133,7 @@ class FolderGrid extends St.Viewport {
         this.order.splice(to, 0, appId);
     }
 
-    /** Index of the slot whose centre is nearest (x, y), in grid pixels. */
+    // nearest slot to (x, y), in grid pixels
     slotAt(x, y) {
         const n = this.order.length;
         let best = 0, bestD = Infinity;
@@ -230,7 +226,6 @@ class FolderView extends St.Widget {
         return this._scroll;
     }
 
-    /** Drops cached grids of folders that no longer exist. */
     retain(folderIds) {
         const keep = new Set(folderIds);
         for (const [id, g] of this._grids) {
@@ -256,11 +251,8 @@ class FolderView extends St.Widget {
         return grid;
     }
 
-    /**
-     * @param {object} folder - {id, name, apps}
-     * @param {object} from - tile rect in this actor's coordinates
-     * @param {object} area - {width, height, top} space for the panel
-     */
+    // from is the tile's rect in this actor's coordinates; area is the
+    // {width, height, top} the panel may use
     open(folder, from, area, {focusApp = null, customOrder = false} = {}) {
         this.folder = folder;
         this._from = from;
@@ -325,7 +317,7 @@ class FolderView extends St.Widget {
         this._sortButton.set_position(this._inner.width - CLOSE_INSET - CLOSE_SIZE - 8 - bw, 22);
     }
 
-    /** The folder's order changed from outside (Sort by use). */
+    // the order changed elsewhere, e.g. Sort by use
     reorder(appIds, customOrder) {
         if (!this._grid)
             return;
@@ -335,13 +327,11 @@ class FolderView extends St.Widget {
         this._syncSortButton(customOrder);
     }
 
-    // ---- reordering ----
-
     get dragging() {
         return this._drag !== null;
     }
 
-    /** Starts dragging an item; (x, y) is the pointer in stage pixels. */
+    // x, y are the pointer's stage coordinates
     beginDrag(item, x, y) {
         const grid = this._grid;
         if (!grid || !this.items.includes(item))
@@ -392,7 +382,7 @@ class FolderView extends St.Widget {
             adj.value = Math.max(adj.lower, Math.min(adj.upper - adj.page_size, adj.value + step));
     }
 
-    /** Drops the item into its slot; returns the new order, or null if unchanged or cancelled. */
+    // returns the new order, or null if it didn't change
     endDrag(commit = true) {
         const d = this._drag;
         if (!d)
@@ -409,13 +399,7 @@ class FolderView extends St.Widget {
         return commit && changed ? [...grid.order] : null;
     }
 
-    /**
-     * Moves an item one place in a direction (keyboard).
-     *
-     * @param {FolderItem} item
-     * @param {number[]} dir - [dx, dy]
-     * @returns {string[]|null} the new order, or null if nothing moved
-     */
+    // Alt+arrows; returns the new order, or null if nothing moved
     moveItem(item, [dx, dy]) {
         const grid = this._grid;
         if (!grid || this._drag)
@@ -430,15 +414,12 @@ class FolderView extends St.Widget {
         return [...grid.order];
     }
 
-    /** The panel actor, for hit tests. */
     get panel() {
         return this._panel;
     }
 
-    /**
-     * Shrinks back into `to` (the tile's current rect), fading out as it
-     * lands, then hides. Returns when the fade starts, in ms.
-     */
+    // Shrinks back into `to`, the tile's rect now. Returns when the panel
+    // starts fading, in ms, so the tile can fade back in as it lands.
     close(to, {instant = false} = {}) {
         if (!this.folder)
             return 0;

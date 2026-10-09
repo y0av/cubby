@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Accent and light/dark style. The accent follows the system accent colour
-// (org.gnome.desktop.interface accent-color, Adwaita values) unless the
-// extension has a custom hex. The style follows color-scheme.
+// The accent is the system accent-color, with Adwaita's values, unless
+// accent-override holds a hex.
 
 import Gio from 'gi://Gio';
 
@@ -39,13 +38,13 @@ export function rgba(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-/** The same colour as Cairo wants it: [r, g, b, a] in 0..1. */
+// [r, g, b, a] in 0..1, for Cairo
 export function cairoRgba(hex, alpha = 1) {
     const [r, g, b] = parseHex(hex) ?? [0, 0, 0];
     return [r / 255, g / 255, b / 255, alpha];
 }
 
-/** WCAG relative luminance of an [r, g, b] colour (0-255). */
+// WCAG relative luminance, from 0..255 channels
 export function luminance([r, g, b]) {
     const lin = c => {
         c /= 255;
@@ -54,7 +53,6 @@ export function luminance([r, g, b]) {
     return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
-/** Switches an actor between the cubby-dark and cubby-light styles. */
 export function applyColorScheme(actor, dark) {
     setStyleClass(actor, 'cubby-dark', dark);
     setStyleClass(actor, 'cubby-light', !dark);
@@ -93,7 +91,7 @@ export class Theme extends Signals.EventEmitter {
         return ACCENTS[this._iface.get_string('accent-color')] ?? ACCENTS.blue;
     }
 
-    /** Text colour to put on an accent fill. */
+    // light or dark text, whichever reads better on the accent
     get accentInk() {
         const a = parseHex(this.accent);
         return contrast(a, parseHex(INK_LIGHT)) >= contrast(a, parseHex(INK_DARK)) ? INK_LIGHT : INK_DARK;

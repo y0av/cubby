@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Searching: the board fades back and blurs, results appear under the
-// field, and the field says what Enter will do.
-
 import Clutter from 'gi://Clutter';
 import Shell from 'gi://Shell';
 
@@ -20,18 +17,13 @@ const RESULTS_IN_MS = 300;
 const RESULTS_OUT_MS = 140;
 
 export class SearchMode {
-    /**
-     * @param {Layer} layer - provides pill, results, board, searchShield,
-     *   searching, selected, select(), activateApp() and close()
-     * @param {AppModel} model
-     */
     constructor(layer, model) {
         this._layer = layer;
         this._model = model;
         this._engine = new SearchEngine();
         this._fallback = null;
-        // once the user moves the selection it stays on the same result
-        // while they type; until then the first result is selected
+        // the first result is selected until the user moves the selection,
+        // after which it stays on the same result as they type
         this._moved = false;
         this._engine.connectObject(
             'apps', () => this._render(),
@@ -110,7 +102,7 @@ export class SearchMode {
         }
     }
 
-    /** Enter: the selected result, or the software search when nothing matched. */
+    // with nothing selected, Enter falls back to the software store
     activateSelection({newWindow = false} = {}) {
         if (this._layer.selected) {
             this.activate(this._layer.selected, {newWindow});
@@ -148,7 +140,7 @@ export class SearchMode {
         this.syncHint();
     }
 
-    /** "10 apps · 4 other", then what Enter will do. */
+    // e.g. "10 apps · 4 other" and "Switch to Telegram"
     syncHint() {
         const apps = this._engine.apps.length;
         const others = this._engine.others.length;

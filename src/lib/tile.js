@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// One folder tile: big icons for the most used apps, and an overflow preview
-// (mini 2x2 plus "+N") in the last slot when they don't all fit. A 1x1 tile
-// is only the preview. The folder name sits on a chip under the tile.
+// Big icons for the most used apps. When they don't all fit, the last slot
+// previews the rest; a 1x1 tile is only that preview.
 
 import Cairo from 'cairo';
 import Clutter from 'gi://Clutter';
@@ -31,7 +30,6 @@ const WIGGLE_MS = 1100;
 const MOVE_MS = 380;
 const DECOR_FADE_MS = 180;
 
-/** A focusable button in a tile; `kind` is 'app' or 'more'. */
 const Slot = GObject.registerClass(
 class Slot extends St.Button {
     _init(tile, kind) {
@@ -48,7 +46,6 @@ class Slot extends St.Button {
     }
 });
 
-/** A big-icon slot: icon, pips, name. */
 const AppSlot = GObject.registerClass(
 class AppSlot extends Slot {
     _init(tile, app, {size, names, labelWidth, isNew}) {
@@ -88,10 +85,7 @@ class AppSlot extends Slot {
     }
 });
 
-/**
- * Overflow preview: up to four mini icons on an inset background with a
- * "+N" badge for apps not visible anywhere on the tile. Opens the folder.
- */
+// Up to four mini icons, and +N for apps not shown anywhere on the tile.
 const MoreSlot = GObject.registerClass(
 class MoreSlot extends Slot {
     _init(tile, apps, {badge, miniSize, single}) {
@@ -160,11 +154,6 @@ class MoreSlot extends Slot {
 
 export const Tile = GObject.registerClass(
 class Tile extends St.Widget {
-    /**
-     * @param {object} controller - the layer: activateApp(), openFolder(),
-     *   onSlotHover(), isNew(), focusApp
-     * @param {object} folder - {id, name, apps}
-     */
     _init(controller, folder) {
         super._init({
             style_class: 'cubby-tile',
@@ -203,17 +192,8 @@ class Tile extends St.Widget {
         this.connect('key-focus-out', () => this._syncHandles());
     }
 
-    /**
-     * Places the tile and rebuilds its slots if anything they show changed.
-     *
-     * @param {object} rect - {page, x, y, w, h} in cells
-     * @param {object} px - {x, y, width, height} on the board
-     * @param {object} grid - metrics from computeGrid
-     * @param {boolean} names - show app names
-     * @param {object} [params]
-     * @param {boolean} [params.force] - rebuild even if nothing changed
-     * @param {boolean} [params.animate] - move and resize smoothly (edit mode)
-     */
+    // rect is in cells, px in board pixels. The slots are only rebuilt when
+    // something they show has changed, or with force.
     layout(rect, px, grid, names, {force = false, animate = false} = {}) {
         this.rect = {...rect};
         this._px = {...px};
@@ -304,7 +284,7 @@ class Tile extends St.Widget {
         this.updateRunning();
     }
 
-    /** Refreshes pips and accessible names, of every slot or one app's. */
+    // without an app, refreshes every slot
     updateRunning(app = null) {
         const focus = this.controller.focusApp;
         for (const slot of this.slots) {
@@ -313,17 +293,8 @@ class Tile extends St.Widget {
         }
     }
 
-    // ---- edit mode ----
-
-    /**
-     * Turns the edit decorations on or off: wiggle, dashed accent outline,
-     * and the grip and resize handle (shown on hover or focus only).
-     *
-     * @param {boolean} on
-     * @param {object} theme - accent source
-     * @param {number} phase - wiggle phase in ms
-     * @param {boolean} wiggle - false when animations are off
-     */
+    // The wiggle, a dashed outline, and grip and resize handles that show on
+    // hover or focus. wiggle is false when animations are off.
     setEditing(on, theme, phase = 0, wiggle = true) {
         this.editing = on;
         this._theme = theme;
@@ -419,7 +390,6 @@ class Tile extends St.Widget {
         this.add_child(this._resizeHandle);
     }
 
-    /** Pauses the wiggle and lifts the tile while it is dragged. */
     setDragging(on) {
         this.dragging = on;
         if (on) {
@@ -463,7 +433,7 @@ class Tile extends St.Widget {
         this._resizeHandle.visible = show;
     }
 
-    /** 'move', 'resize' or null: which handle an event source belongs to. */
+    // 'move', 'resize' or null
     handleFor(actor) {
         return findAncestor(actor, a => a.handleKind, this)?.handleKind ?? null;
     }

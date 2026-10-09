@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Small helpers shared by the layer's modules.
-
 import Gio from 'gi://Gio';
 
-/** A JSON object stored in a string setting, or {} if empty or unreadable. */
+// {} unless the setting holds a JSON object
 export function readJson(settings, key) {
     try {
         const value = JSON.parse(settings.get_string(key) || '{}');
@@ -15,7 +13,7 @@ export function readJson(settings, key) {
     }
 }
 
-/** The actor or its nearest ancestor, below `stop`, for which `test` holds. */
+// checks actor itself first and stops before reaching `stop`
 export function findAncestor(actor, test, stop = null) {
     for (let a = actor; a && a !== stop; a = a.get_parent()) {
         if (test(a))
@@ -24,7 +22,7 @@ export function findAncestor(actor, test, stop = null) {
     return null;
 }
 
-/** An actor's transformed extents as {x, y, width, height} in stage pixels. */
+// in stage pixels
 export function extents(actor) {
     const e = actor.get_transformed_extents();
     return {x: e.get_x(), y: e.get_y(), width: e.get_width(), height: e.get_height()};

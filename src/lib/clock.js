@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Optional large clock and date chip under the search field. Ticks from
-// GnomeDesktop.WallClock and follows the 12/24-hour setting.
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -44,7 +41,6 @@ class Clock extends St.BoxLayout {
         this.connect('destroy', () => this.stop());
     }
 
-    /** Starts ticking (only while shown). */
     start() {
         if (!this._wallClock) {
             this._wallClock = new GnomeDesktop.WallClock();
@@ -61,12 +57,8 @@ class Clock extends St.BoxLayout {
         this._wallClock = null;
     }
 
-    /**
-     * Sizes the clock with the grid, so that on a small screen it shrinks
-     * with the tiles instead of crowding them. The date stays readable.
-     *
-     * @param {number} scale - the grid's scale, 1 at the reference size
-     */
+    // Follows the grid's scale so the clock doesn't crowd the tiles on a small
+    // screen. The date has a minimum size.
     setScale(scale) {
         const size = (px, min = 0) => Math.max(min, Math.round(px * scale));
         this.style = `spacing: ${size(10)}px;`;
@@ -90,12 +82,9 @@ class Clock extends St.BoxLayout {
     }
 });
 
-/**
- * A soft glow behind the clock, just strong enough for the digits to reach
- * 5:1 against the wallpaper under them, and often fully transparent. St's
- * radial gradient is circular, so a circle is drawn and stretched into an
- * ellipse around the digits.
- */
+// A glow behind the clock, just strong enough for 5:1 contrast with the
+// wallpaper and often fully transparent. St only does circular radial
+// gradients, so this is a circle stretched into an ellipse.
 export const ClockHalo = GObject.registerClass(
 class ClockHalo extends St.Widget {
     _init() {
@@ -107,22 +96,14 @@ class ClockHalo extends St.Widget {
         });
     }
 
-    /** Centres the halo on (x, y). */
     place(x, y, scaleFactor) {
         const size = Math.round(HALO_SIZE * scaleFactor);
         this.set_size(size, size);
         this.set_position(Math.round(x - size / 2), Math.round(y - size / 2));
     }
 
-    /**
-     * Works out how strong the halo has to be over the wallpaper.
-     *
-     * @param {object} wallpaper - the WallpaperWatcher
-     * @param {Array} region - [x0, y0, x1, y1] behind the digits, as
-     *   fractions of the monitor
-     * @param {number} scrim - the scrim's opacity over that region
-     * @returns {boolean} whether any halo is needed
-     */
+    // region is [x0, y0, x1, y1] behind the digits, in fractions of the
+    // monitor, and scrim the scrim's opacity there. False if no halo is needed.
     update(wallpaper, region, scrim) {
         // a bright wallpaper gets the dark clock and a light halo
         const bright = wallpaper.luminance > 0.5;

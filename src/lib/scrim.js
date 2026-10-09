@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// The shade between the windows and the board: strongest at the top where
-// the search field is, light across the middle and a little stronger again
-// at the bottom. Brighter wallpapers get a stronger shade, so text stays
-// readable on any of them.
+// Darkest behind the search field, light over the middle of the board and
+// a bit darker again at the bottom. Brighter wallpapers get more shade.
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
@@ -14,12 +12,7 @@ const TOP_END = 0.36;
 const BOTTOM_START = 0.64;
 const SHADE = '12, 12, 20';
 
-/**
- * Scrim opacity at a height on the monitor.
- *
- * @param {number} fy - 0 at the top, 1 at the bottom
- * @param {number} luminance - the wallpaper's mean luminance, 0..1
- */
+// fy goes from 0 at the top of the monitor to 1 at the bottom
 export function scrimAlpha(fy, luminance) {
     const top = 0.38 + luminance * 0.42;
     const middle = 0.04 + luminance * 0.3;

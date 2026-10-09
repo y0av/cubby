@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Frosted glass (optional): one blurred copy of the wallpaper, shown only
-// inside the tiles. There is no live blur: the wallpaper sample (96px wide,
-// already cropped to the monitor) is box-blurred once in JS when the
-// wallpaper changes and stretched over the monitor with linear filtering.
-// One GLSL effect masks it to the tiles' rounded rectangles; their rects and
-// opacities are refreshed on frames that are being drawn anyway.
+// Frosted glass without a live blur. The 96px wallpaper sample is blurred once
+// in JS when the wallpaper changes and stretched over the monitor; a GLSL
+// effect masks it to the tiles, updated on frames that are drawn anyway.
 
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
@@ -61,7 +58,7 @@ class FrostMask extends Shell.GLSLEffect {
         this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, DECL, CODE, false);
     }
 
-    /** @param {Array} rects - [{x, y, width, height, alpha}] in actor pixels */
+    // rects are {x, y, width, height, alpha} in actor pixels
     update(rects, width, height, radius) {
         const n = Math.min(MAX_RECTS, rects.length);
         const flat = new Array(MAX_RECTS * 4).fill(0);
@@ -80,7 +77,7 @@ class FrostMask extends Shell.GLSLEffect {
     }
 });
 
-/** Separable box blur on an RGB(A) sample, repeated to approach a Gaussian. */
+// a few box blur passes come close enough to a Gaussian
 function blurSample(sample) {
     const {width: w, height: h, n, stride, data} = sample;
     const src = new Float32Array(w * h * 3);
@@ -133,7 +130,6 @@ class Frost extends St.Widget {
         this._key = '';
     }
 
-    /** New wallpaper sample, or null (plain colour: no frost). */
     setSample(sample) {
         if (!sample) {
             this.set_content(null);
@@ -147,10 +143,6 @@ class Frost extends St.Widget {
         this.set_content(content);
     }
 
-    /**
-     * @param {Array} rects - tile rects in this actor's pixels, with alpha
-     * @param {number} radius - corner radius
-     */
     setRects(rects, radius) {
         const key = rects.map(r => `${r.x.toFixed(1)},${r.y.toFixed(1)},${r.width.toFixed(1)},${r.height.toFixed(1)},${r.alpha.toFixed(2)}`).join(';');
         if (key === this._key)
