@@ -79,14 +79,15 @@ function finishMetrics(m, wa, monitor) {
     // margins split it 40/60 so the block does not hug the panel
     const top = m.top + (m.tight ? Math.round(spare * 0.4) : 0);
     const pillY = wa.y + top;
+    const pillW = Math.min(PILL_W, monitor.width - 32);
     const boardY = pillY + PILL_H + m.headerGap;
     return {
         ...m,
         boardW, boardH,
         boardX: Math.round(wa.x + (wa.width - boardW) / 2),
         boardY,
-        pillW: Math.min(PILL_W, monitor.width - 32),
-        pillX: Math.round(wa.x + (wa.width - Math.min(PILL_W, monitor.width - 32)) / 2),
+        pillW,
+        pillX: Math.round(wa.x + (wa.width - pillW) / 2),
         pillY,
         clockY: pillY + PILL_H + Math.round(18 * m.scale),
         bottomY: boardY + boardH + CHIP_OVERHANG,
@@ -114,6 +115,13 @@ class Pages {
         this.cols = cols;
         this.rows = rows;
         this.pages = [];
+    }
+
+    static from(tiles, cols, rows) {
+        const occ = new Pages(cols, rows);
+        for (const [id, t] of Object.entries(tiles))
+            occ.put(id, t.page, t.x, t.y, t.w, t.h);
+        return occ;
     }
 
     _page(p) {
@@ -144,15 +152,26 @@ class Pages {
     }
 
     clear(p, x, y, w, h) {
-        const pg = this._page(p);
-        for (let j = y; j < y + h; j++) {
-            for (let i = x; i < x + w; i++)
-                pg[j * this.cols + i] = null;
-        }
+        this.put(null, p, x, y, w, h);
     }
 
     at(p, x, y) {
         return this.pages[p]?.[y * this.cols + x] ?? null;
+    }
+
+    /** First free spot (page, row, column) for any of the [w, h] sizes, tried in turn. */
+    findSpace(sizes) {
+        for (let p = 0; p <= 1000; p++) {
+            for (let y = 0; y < this.rows; y++) {
+                for (let x = 0; x < this.cols; x++) {
+                    for (const [w, h] of sizes) {
+                        if (this.fits(p, x, y, w, h))
+                            return {page: p, x, y, w, h};
+                    }
+                }
+            }
+        }
+        throw new Error('no space for a tile');
     }
 }
 
@@ -171,24 +190,11 @@ export function firstFit(items, cols, rows) {
     const occ = new Pages(cols, rows);
     const out = {};
     for (const it of items) {
-        const sizes = [[clamp(it.w, 1, cols), clamp(it.h, 1, rows)]];
+        const w = clamp(it.w, 1, cols), h = clamp(it.h, 1, rows);
+        const sizes = [[w, h]];
         if (it.flex && it.w * it.h === 2)
-            sizes.push([sizes[0][1], sizes[0][0]].map((v, i) => clamp(v, 1, i ? rows : cols)));
-        let placed = null;
-        for (let p = 0; !placed; p++) {
-            for (let y = 0; y < rows && !placed; y++) {
-                for (let x = 0; x < cols && !placed; x++) {
-                    for (const [w, h] of sizes) {
-                        if (occ.fits(p, x, y, w, h)) {
-                            placed = {page: p, x, y, w, h};
-                            break;
-                        }
-                    }
-                }
-            }
-            if (p > 1000)
-                throw new Error('firstFit: no space');
-        }
+            sizes.push([clamp(h, 1, cols), clamp(w, 1, rows)]);
+        const placed = occ.findSpace(sizes);
         occ.put(it.id, placed.page, placed.x, placed.y, placed.w, placed.h);
         out[it.id] = placed;
     }
@@ -210,9 +216,7 @@ export function pageCount(tiles) {
  * before the last one counts, since content continues on the next page.
  */
 export function findHoles(tiles, cols, rows) {
-    const occ = new Pages(cols, rows);
-    for (const [id, t] of Object.entries(tiles))
-        occ.put(id, t.page, t.x, t.y, t.w, t.h);
+    const occ = Pages.from(tiles, cols, rows);
     const holes = [];
     const last = pageCount(tiles) - 1;
     for (let p = 0; p <= last; p++) {
@@ -250,9 +254,7 @@ export function fillHoles(tiles, cols, rows, counts = {}) {
         const holes = findHoles(tiles, cols, rows);
         if (!holes.length)
             break;
-        const occ = new Pages(cols, rows);
-        for (const [id, t] of Object.entries(tiles))
-            occ.put(id, t.page, t.x, t.y, t.w, t.h);
+        const occ = Pages.from(tiles, cols, rows);
         const useful = (id, r) => (counts[id] ?? 0) >= r.w * r.h;
         let fixed = false;
         for (const hole of holes) {
@@ -380,6 +382,15 @@ export function planSizes(folders, cols, rows) {
     }));
 }
 
+// one step down the size ladder: 3x2, 2x2, 2x1, 1x1
+function shrink(p) {
+    if (p.w * p.h <= 2)
+        return {...p, w: 1, h: 1, flex: false};
+    if (p.w === 3)
+        return {...p, w: 2, flex: false};
+    return {...p, h: 1, flex: p.w * p.h === 4};
+}
+
 /** Generated first-run layout. */
 export function generateLayout(folders, cols, rows) {
     const counts = Object.fromEntries(folders.map(f => [f.id, f.count]));
@@ -394,10 +405,8 @@ export function generateLayout(folders, cols, rows) {
         const k = plan.map(p => p.w * p.h > 1).lastIndexOf(true);
         if (k < 0)
             return fillHoles(tiles, cols, rows, counts);
-        const p = plan[k];
         plan = plan.slice();
-        plan[k] = p.w * p.h > 2 ? {...p, w: p.w === 3 ? 2 : p.w, h: p.w === 3 ? p.h : 1, flex: p.w * p.h === 4}
-            : {...p, w: 1, h: 1, flex: false};
+        plan[k] = shrink(plan[k]);
     }
     return fillHoles(firstFit(plan, cols, rows), cols, rows, counts);
 }
@@ -470,15 +479,7 @@ export function reconcile(tiles, folderIds, cols, rows) {
             bad.push({id, w: 1, h: 1});
     }
     for (const it of bad) {
-        let placed = null;
-        for (let p = 0; !placed; p++) {
-            for (let y = 0; y < rows && !placed; y++) {
-                for (let x = 0; x < cols && !placed; x++) {
-                    if (occ.fits(p, x, y, it.w, it.h))
-                        placed = {page: p, x, y, w: it.w, h: it.h};
-                }
-            }
-        }
+        const placed = occ.findSpace([[it.w, it.h]]);
         kept[it.id] = placed;
         occ.put(it.id, placed.page, placed.x, placed.y, placed.w, placed.h);
     }
