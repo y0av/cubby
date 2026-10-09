@@ -13,6 +13,7 @@ import St from 'gi://St';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {AppIcon, accessibleName, addPressFeedback} from './appIcon.js';
+import {setStyleClass} from './util.js';
 
 const APP_COLS = 5;
 const RESULT_ICON = 56;
@@ -123,10 +124,7 @@ class AppResult extends St.Button {
 
     setCaption(caption, live, focusApp) {
         this._cap.text = caption;
-        if (live)
-            this._cap.add_style_class_name('cubby-live');
-        else
-            this._cap.remove_style_class_name('cubby-live');
+        setStyleClass(this._cap, 'cubby-live', live);
         this.appIcon.updateRunning(focusApp);
         this.accessible_name = accessibleName(this.app, caption);
     }

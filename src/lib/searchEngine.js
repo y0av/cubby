@@ -14,6 +14,8 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import * as ParentalControlsManager from 'resource:///org/gnome/shell/misc/parentalControlsManager.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
+import {isCancelled} from './util.js';
+
 const MAX_APPS = 10;
 const PER_PROVIDER = 3;
 const MAX_OTHER = 8;
@@ -99,7 +101,7 @@ export class SearchEngine extends Signals.EventEmitter {
         this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROVIDER_DELAY_MS, () => {
             this._timeoutId = 0;
             this._runProviders(terms, sub).catch(e => {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                if (!isCancelled(e))
                     logError(e, 'cubby: search provider');
             });
             return GLib.SOURCE_REMOVE;
@@ -183,7 +185,7 @@ export class SearchEngine extends Signals.EventEmitter {
                 })));
                 publish();
             } catch (e) {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
+                if (!isCancelled(e)) {
                     console.debug(`cubby: provider ${provider.id}: ${e.message}`);
                     if (results.delete(provider))
                         publish();

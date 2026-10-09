@@ -13,6 +13,8 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {applyColorScheme} from './theme.js';
+
 /** Right-click menu: Edit layout, Show app names, Show clock, Reset, Preferences. */
 export class ContextMenu {
     /**
@@ -54,8 +56,7 @@ export class ContextMenu {
     }
 
     setDark(dark) {
-        this.menu.actor.remove_style_class_name(dark ? 'cubby-light' : 'cubby-dark');
-        this.menu.actor.add_style_class_name(dark ? 'cubby-dark' : 'cubby-light');
+        applyColorScheme(this.menu.actor, dark);
     }
 
     /** Opens at stage coordinates. */
