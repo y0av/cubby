@@ -67,6 +67,14 @@ function scaleGrid(g, sf) {
     return out;
 }
 
+/** The item after `current` (before it if backward), wrapping around; an end one without `current`. */
+function cycle(items, current, backward) {
+    const i = items.indexOf(current);
+    if (i < 0)
+        return items[backward ? items.length - 1 : 0];
+    return items[(i + (backward ? -1 : 1) + items.length) % items.length];
+}
+
 function isPrintable(event) {
     const state = event.get_state();
     if (state & (Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.MOD1_MASK |
@@ -100,6 +108,12 @@ export const Layer = GObject.registerClass({
         this._isOpen = false;
         this._longPress = null;
         this._grab = null;
+        // owner of the stage handler that closes on a press on another monitor
+        this._outsideWatch = {};
+        this._launchIcon = null;
+        this._folderTile = null;
+        this._folderPress = null;
+        this._folderGrab = null;
         this._dimmer = new WindowDimmer();
         this.mode = Mode.BOARD;
         this._selected = null;
@@ -274,7 +288,6 @@ export const Layer = GObject.registerClass({
         this._syncCoach();
         // the tile's slots may be rebuilt while the folder is open (a new
         // order), so remember the tile, not the slot actor
-        this._folderOpener = tile;
         this._folderTile = tile;
         this.tooltip.showFor(null);
         this.select(null);
@@ -326,10 +339,8 @@ export const Layer = GObject.registerClass({
                 this._shield.hide();
         }});
         easeBlur(this._content, 'folder-blur', 0, duration);
-        const openerTile = this._folderOpener;
-        this._folderOpener = null;
-        const opener = openerTile?.get_stage()
-            ? openerTile.slots.find(sl => sl.kind === 'more') ?? openerTile.slots.at(-1) : null;
+        const opener = tile?.get_stage()
+            ? tile.slots.find(sl => sl.kind === 'more') ?? tile.slots.at(-1) : null;
         if (opener?.get_stage()) {
             opener.grab_key_focus();
             this.select(opener);
@@ -488,18 +499,8 @@ export const Layer = GObject.registerClass({
         this._syncCoach({delay: 600});
         this._syncClock();
 
-        // the layer covers one monitor; a press on another one closes it
-        this._outsideWatch ??= {};
-        global.stage.connectObject('captured-event', (_s, event) => {
-            const type = event.type();
-            if (type !== Clutter.EventType.BUTTON_PRESS && type !== Clutter.EventType.TOUCH_BEGIN)
-                return Clutter.EVENT_PROPAGATE;
-            const [x, y] = event.get_coords();
-            const m = this.monitor;
-            if (m && (x < m.x || y < m.y || x >= m.x + m.width || y >= m.y + m.height))
-                this.close();
-            return Clutter.EVENT_PROPAGATE;
-        }, this._outsideWatch);
+        global.stage.connectObject('captured-event',
+            (_s, event) => this._closeOnOutsidePress(event), this._outsideWatch);
         this._dimmer.dim(this._monitorIndex, {duration: WINDOW_DIM_MS});
         this._scrim.ease({
             opacity: 255,
@@ -508,6 +509,18 @@ export const Layer = GObject.registerClass({
         });
         animateOpen(this.board.tiles.values(), this.board.page, this.grid, this.pill);
         this.emit('open-changed', true);
+    }
+
+    // the layer covers one monitor; a press on another one closes it
+    _closeOnOutsidePress(event) {
+        const type = event.type();
+        if (type !== Clutter.EventType.BUTTON_PRESS && type !== Clutter.EventType.TOUCH_BEGIN)
+            return Clutter.EVENT_PROPAGATE;
+        const [x, y] = event.get_coords();
+        const m = this.monitor;
+        if (m && (x < m.x || y < m.y || x >= m.x + m.width || y >= m.y + m.height))
+            this.close();
+        return Clutter.EVENT_PROPAGATE;
     }
 
     // everything over the board that fades with it
@@ -532,8 +545,7 @@ export const Layer = GObject.registerClass({
         if (!this._isOpen)
             return;
         this._isOpen = false;
-        if (this._outsideWatch)
-            global.stage.disconnectObject(this._outsideWatch);
+        global.stage.disconnectObject(this._outsideWatch);
         this._cancelLongPress();
         if (this._menu.isOpen)
             this._menu.close();
@@ -575,12 +587,16 @@ export const Layer = GObject.registerClass({
         this._settleOverlays();
         for (const tile of this.board.tiles.values())
             settleTile(tile);
-        if (this._grab) {
-            Main.popModal(this._grab);
-            this._grab = null;
-        }
+        this._popModal();
         this._model.markAllSeen();
         this.clock.stop();
+    }
+
+    _popModal() {
+        if (!this._grab)
+            return;
+        Main.popModal(this._grab);
+        this._grab = null;
     }
 
     // back to a clean board for the next open
@@ -602,36 +618,41 @@ export const Layer = GObject.registerClass({
     setEditing(on, {tile = null} = {}) {
         if (on === (this.mode === Mode.EDIT))
             return;
-        if (on) {
-            if (this.mode === Mode.SEARCH)
-                this.pill.text = '';
-            if (this.mode === Mode.FOLDER)
-                this.closeFolder({instant: true});
-            this.mode = Mode.EDIT;
-            this._dismissCoach();
-            this.select(null);
-            this.tooltip.showFor(null);
-            this.pill.ease({opacity: 0, duration: 150, onComplete: () => this.pill.hide()});
-            this._centerX(this.editBar, this.grid.pillY);
-            this.editBar.show();
-            this.editBar.opacity = 0;
-            this.editBar.translation_y = -10;
-            this.editBar.ease({opacity: 255, translation_y: 0, duration: 250, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
-            this._edit.enter();
-            this._syncClock();
-            const first = tile ?? this.board.tiles.get(Object.keys(this.board.rects)
-                .sort((a, b) => this.board.rects[a].page - this.board.rects[b].page)[0]);
-            (tile ?? first)?.grab_key_focus();
-        } else {
-            this._edit.exit();
-            this.mode = Mode.BOARD;
-            this.editBar.ease({opacity: 0, duration: 150, onComplete: () => this.editBar.hide()});
-            this.pill.show();
-            this.pill.ease({opacity: 255, duration: 200});
-            this.grab_key_focus();
-            this._syncCoach();
-            this._syncClock();
-        }
+        if (on)
+            this._enterEdit(tile);
+        else
+            this._exitEdit();
+    }
+
+    _enterEdit(tile) {
+        if (this.mode === Mode.SEARCH)
+            this.pill.text = '';
+        if (this.mode === Mode.FOLDER)
+            this.closeFolder({instant: true});
+        this.mode = Mode.EDIT;
+        this._dismissCoach();
+        this.select(null);
+        this.tooltip.showFor(null);
+        this.pill.ease({opacity: 0, duration: 150, onComplete: () => this.pill.hide()});
+        this._centerX(this.editBar, this.grid.pillY);
+        this.editBar.show();
+        this.editBar.opacity = 0;
+        this.editBar.translation_y = -10;
+        this.editBar.ease({opacity: 255, translation_y: 0, duration: 250, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+        this._edit.enter();
+        this._syncClock();
+        (tile ?? this.board.tilesInOrder()[0])?.grab_key_focus();
+    }
+
+    _exitEdit() {
+        this._edit.exit();
+        this.mode = Mode.BOARD;
+        this.editBar.ease({opacity: 0, duration: 150, onComplete: () => this.editBar.hide()});
+        this.pill.show();
+        this.pill.ease({opacity: 255, duration: 200});
+        this.grab_key_focus();
+        this._syncCoach();
+        this._syncClock();
     }
 
     _resetLayout() {
@@ -649,14 +670,10 @@ export const Layer = GObject.registerClass({
     }
 
     _tabTiles(backward) {
-        const order = Object.keys(this.board.rects).sort((a, b) => {
-            const ra = this.board.rects[a], rb = this.board.rects[b];
-            return ra.page - rb.page || ra.y - rb.y || ra.x - rb.x;
-        }).map(id => this.board.tiles.get(id));
-        if (!order.length)
+        const tiles = this.board.tilesInOrder();
+        if (!tiles.length)
             return;
-        const i = order.indexOf(this._focusedTile());
-        const next = order[(i + (backward ? -1 : 1) + order.length) % order.length] ?? order[0];
+        const next = cycle(tiles, this._focusedTile(), backward);
         if (next.rect.page !== this.board.page)
             this.board.setPage(next.rect.page);
         next.grab_key_focus();
@@ -665,18 +682,19 @@ export const Layer = GObject.registerClass({
     // ---- clock ----
 
     _syncClock() {
-        const want = this._settings.get_boolean('show-clock') && this._isOpen;
-        const shown = want && (this.mode === Mode.BOARD || this.mode === Mode.FOLDER);
-        if (want)
+        const enabled = this._settings.get_boolean('show-clock');
+        const ticking = enabled && this._isOpen;
+        const shown = ticking && (this.mode === Mode.BOARD || this.mode === Mode.FOLDER);
+        if (ticking)
             this.clock.start();
         else
             this.clock.stop();
-        this.clock.visible = this._settings.get_boolean('show-clock');
-        this.clock.remove_transition('opacity');
-        this.clock.ease({opacity: shown ? 255 : 0, duration: shown ? 250 : 120});
+        this.clock.visible = enabled;
         this._syncClockHalo();
-        this._clockHalo.remove_transition('opacity');
-        this._clockHalo.ease({opacity: shown ? 255 : 0, duration: shown ? 250 : 120});
+        for (const actor of [this.clock, this._clockHalo]) {
+            actor.remove_transition('opacity');
+            actor.ease({opacity: shown ? 255 : 0, duration: shown ? 250 : 120});
+        }
     }
 
     // ---- first-run tip ----
@@ -849,12 +867,8 @@ export const Layer = GObject.registerClass({
     _tab(backward) {
         this._kb = true;
         const items = this.mode === Mode.BOARD ? this.board.focusables() : this._candidates();
-        if (!items.length)
-            return;
-        const i = items.indexOf(this._selected);
-        const next = i < 0 ? items[backward ? items.length - 1 : 0]
-            : items[(i + (backward ? -1 : 1) + items.length) % items.length];
-        this._focusItem(next);
+        if (items.length)
+            this._focusItem(cycle(items, this._selected, backward));
     }
 
     _focusItem(item) {
@@ -923,50 +937,63 @@ export const Layer = GObject.registerClass({
             return this._onKeyPress(event);
         if (type === Clutter.EventType.BUTTON_PRESS)
             return this._onButtonPress(event);
-        if (type === Clutter.EventType.MOTION) {
-            const [x, y] = event.get_coords();
-            if (this._edit.dragging) {
-                this._edit.motion(x, y);
-                return Clutter.EVENT_STOP;
-            }
-            if (this.folderView.dragging) {
-                this.folderView.dragMotion(x, y);
-                return Clutter.EVENT_STOP;
-            }
-            // a press on a folder app that moves far enough starts a drag
-            const fp = this._folderPress;
-            if (fp && Math.hypot(x - fp.x, y - fp.y) > St.Settings.get().drag_threshold) {
-                this._folderPress = null;
-                fp.item.fake_release();
-                if (this.folderView.beginDrag(fp.item, fp.x, fp.y)) {
-                    this.tooltip.showFor(null);
-                    this._folderGrab = global.stage.grab(this);
-                    this.folderView.dragMotion(x, y);
-                    return Clutter.EVENT_STOP;
-                }
-            }
-            if (this._longPress &&
-                Math.hypot(x - this._longPress.x, y - this._longPress.y) > LONG_PRESS_SLOP)
-                this._cancelLongPress();
-            if (this._kb && this.mode !== Mode.SEARCH) {
-                this._kb = false;
-                this._paint(this._selected, false);
-                this.tooltip.showFor(null);
-            }
+        if (type === Clutter.EventType.MOTION)
+            return this._onMotion(event);
+        if (type === Clutter.EventType.BUTTON_RELEASE)
+            return this._onButtonRelease();
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _onMotion(event) {
+        const [x, y] = event.get_coords();
+        if (this._edit.dragging) {
+            this._edit.motion(x, y);
+            return Clutter.EVENT_STOP;
         }
-        if (type === Clutter.EventType.BUTTON_RELEASE) {
+        if (this.folderView.dragging) {
+            this.folderView.dragMotion(x, y);
+            return Clutter.EVENT_STOP;
+        }
+        if (this._startFolderDrag(x, y))
+            return Clutter.EVENT_STOP;
+        if (this._longPress &&
+            Math.hypot(x - this._longPress.x, y - this._longPress.y) > LONG_PRESS_SLOP)
             this._cancelLongPress();
-            this._folderPress = null;
-            if (this._edit.dragging) {
-                this._edit.endDrag(true);
-                return Clutter.EVENT_STOP;
-            }
-            if (this.folderView.dragging) {
-                this._endFolderDrag(true);
-                return Clutter.EVENT_STOP;
-            }
+        if (this._kb && this.mode !== Mode.SEARCH) {
+            this._kb = false;
+            this._paint(this._selected, false);
+            this.tooltip.showFor(null);
         }
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    _onButtonRelease() {
+        this._cancelLongPress();
+        this._folderPress = null;
+        if (this._edit.dragging) {
+            this._edit.endDrag(true);
+            return Clutter.EVENT_STOP;
+        }
+        if (this.folderView.dragging) {
+            this._endFolderDrag(true);
+            return Clutter.EVENT_STOP;
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    // a press on a folder app that moves far enough starts a drag
+    _startFolderDrag(x, y) {
+        const press = this._folderPress;
+        if (!press || Math.hypot(x - press.x, y - press.y) <= St.Settings.get().drag_threshold)
+            return false;
+        this._folderPress = null;
+        press.item.fake_release();
+        if (!this.folderView.beginDrag(press.item, press.x, press.y))
+            return false;
+        this.tooltip.showFor(null);
+        this._folderGrab = global.stage.grab(this);
+        this.folderView.dragMotion(x, y);
+        return true;
     }
 
     _endFolderDrag(commit) {
@@ -1010,27 +1037,27 @@ export const Layer = GObject.registerClass({
             this._edit.beginDrag(tile, kind, x, y, this);
             return Clutter.EVENT_STOP;
         }
-        if (this.mode === Mode.BOARD && tile) {
-            // long-press a tile to start arranging, like a phone launcher
-            this._cancelLongPress();
-            let pressed = source;
-            while (pressed && !(pressed instanceof St.Button) && pressed !== tile)
-                pressed = pressed.get_parent();
-            const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
-                const lp = this._longPress;
-                this._longPress = null;
-                if (!lp || this.mode !== Mode.BOARD)
-                    return GLib.SOURCE_REMOVE;
-                if (lp.pressed instanceof St.Button)
-                    lp.pressed.fake_release();
-                this.setEditing(true, {tile: lp.tile});
-                const [px, py] = global.get_pointer();
-                this._edit.beginDrag(lp.tile, 'move', px, py, this);
-                return GLib.SOURCE_REMOVE;
-            });
-            this._longPress = {id, x, y, tile, pressed};
-        }
+        if (this.mode === Mode.BOARD && tile)
+            this._startLongPress(tile, source, x, y);
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    // long-press a tile to start arranging, like a phone launcher
+    _startLongPress(tile, source, x, y) {
+        this._cancelLongPress();
+        const pressed = findAncestor(source, a => a instanceof St.Button || a === tile);
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
+            this._longPress = null;
+            if (this.mode !== Mode.BOARD)
+                return GLib.SOURCE_REMOVE;
+            if (pressed instanceof St.Button)
+                pressed.fake_release();
+            this.setEditing(true, {tile});
+            const [px, py] = global.get_pointer();
+            this._edit.beginDrag(tile, 'move', px, py, this);
+            return GLib.SOURCE_REMOVE;
+        });
+        this._longPress = {id, x, y};
     }
 
     _cancelLongPress() {
@@ -1192,14 +1219,10 @@ export const Layer = GObject.registerClass({
         this._wallpaper.destroy();
         this._model.disconnectObject(this);
         this._dimmer.restore({duration: 0});
-        if (this._grab) {
-            Main.popModal(this._grab);
-            this._grab = null;
-        }
+        this._popModal();
         this._search.destroy();
         global.stage.disconnectObject(this);
-        if (this._outsideWatch)
-            global.stage.disconnectObject(this._outsideWatch);
+        global.stage.disconnectObject(this._outsideWatch);
         this._theme.disconnectObject(this);
         this._settings.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
