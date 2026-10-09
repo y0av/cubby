@@ -12,7 +12,7 @@ Tiles are your existing GNOME app folders, with the apps you use most up front. 
 
 ## Install
 
-Needs GNOME Shell 50. Works with the stock dash, Ubuntu Dock and Dash to Panel.
+Needs GNOME Shell 50. Open it with Super+A or the Show Apps button.
 
 ```sh
 curl -LO https://github.com/y0av/cubby/releases/latest/download/cubby@y0av.github.io.shell-extension.zip
