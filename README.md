@@ -29,8 +29,6 @@ gjs -m tests/test-layout.js     # unit tests
 tools/nest.sh start 1920x1200   # nested headless shell, separate from your session
 ```
 
-`DECISIONS.md` covers how Cubby hooks into the shell and which private APIs it depends on.
-
 ## License
 
 GPL-2.0-or-later
