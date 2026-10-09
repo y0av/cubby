@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Cubby: a home screen for GNOME. Replaces the Show Apps grid with folder
-// tiles you place and size yourself.
-
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {EntryPoints} from './lib/entryPoints.js';

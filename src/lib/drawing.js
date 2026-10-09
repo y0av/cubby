@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Cairo helpers. St has no dashed borders, so the edit-mode outlines and
-// the empty-cell placeholders are drawn.
+// St can't do dashed borders, so the edit-mode outlines and the empty-cell
+// placeholders are drawn with Cairo.
 
 function roundedRect(cr, x, y, w, h, r) {
     r = Math.min(r, w / 2, h / 2);
@@ -14,14 +14,7 @@ function roundedRect(cr, x, y, w, h, r) {
     cr.closePath();
 }
 
-/**
- * Strokes (and optionally fills) dashed rounded rectangles on a
- * St.DrawingArea, from its repaint handler.
- *
- * @param {St.DrawingArea} area
- * @param {Array} rects - [{x, y, width, height}]
- * @param {object} style - colours as [r, g, b, a] in 0..1
- */
+// Call from the area's repaint handler. Colours are [r, g, b, a] in 0..1.
 export function drawDashed(area, rects, {rgba, fill = null, radius = 32, width = 1.5, dash = [6, 4]}) {
     const cr = area.get_context();
     cr.setLineWidth(width);

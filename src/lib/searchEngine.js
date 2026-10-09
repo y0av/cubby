@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Search: apps ranked the way the shell ranks them, plus results from the
-// shell's own search providers (built-in and remote), reused from the
-// overview so provider settings, sort order and extension providers apply.
+// Borrows the overview's search providers, so the user's provider settings
+// and order, and providers added by other extensions, all apply.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -23,17 +22,14 @@ const PROVIDER_DELAY_MS = 150;
 const SOFTWARE_IDS = ['org.gnome.Software.desktop'];
 const APP_CENTER_IDS = ['snap-store_snap-store.desktop', 'io.elementary.appcenter.desktop'];
 
-/** Same splitting as ui/searchController.js getTermsForSearchString. */
+// same as getTermsForSearchString in ui/searchController.js
 function termsFor(text) {
     const s = text.trim();
     return s ? s.split(/\s+/) : [];
 }
 
-/**
- * Emits 'apps' (apps[]) synchronously on each query and 'others'
- * (results[]) as providers answer. An "other" result is
- * {kind, id, name, source, createIcon(size), provider}.
- */
+// Emits 'apps' right away for each query and 'others' as providers answer.
+// Provider results are {kind, id, name, source, createIcon(size), provider}.
 export class SearchEngine extends Signals.EventEmitter {
     constructor() {
         super();
@@ -176,7 +172,7 @@ export class SearchEngine extends Signals.EventEmitter {
         }));
     }
 
-    // a provider's top results, or null if the query was cancelled meanwhile
+    // null if the query was cancelled in the meantime
     async _queryProvider(provider, terms, sub, cancellable) {
         const prev = this._previous[provider.id];
         const ids = sub && prev
@@ -209,13 +205,8 @@ export class SearchEngine extends Signals.EventEmitter {
             result.provider.activateResult(result.id, this._terms);
     }
 
-    /**
-     * Where Enter goes when nothing matches: GNOME Software's search, or
-     * App Center (which has no search entry point, so it just opens).
-     *
-     * @returns {{name: string, run: Function, open?: boolean}|null} open
-     *   is set when the app only opens, without the search terms
-     */
+    // Where Enter goes with no results: GNOME Software's search, or App
+    // Center, which can't be handed a search and only opens (open: true).
     softwareFallback() {
         const software = this._providers().find(p => SOFTWARE_IDS.includes(p.appInfo?.get_id()));
         if (software?.canLaunchSearch) {

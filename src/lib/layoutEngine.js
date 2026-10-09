@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Pure layout logic: grid metrics, tile packing, reflow, overflow counts and
-// spatial navigation. No GI imports, so tests/ can run it in plain gjs.
+// No GI imports here, so tests/test-layout.js can run it in plain gjs.
 
-// Reference unit on a 1920x1200 monitor with a 48px panel (work area 1152 high).
+// sizes at 1920x1200 with a 48px panel, which leaves a 1152px work area
 const REF = {U: 156, V: 150, GX: 34, GY: 64, W: 1920, H: 1152};
 const MIN_SCALE = 0.66;
 const MAX_SCALE = 1.3;
@@ -15,19 +14,11 @@ export const MAX_TILE_H = 3;
 
 export const PILL_H = 60;
 const PILL_W = 820;
-const CHIP_OVERHANG = 36; // folder name chip: 8px gap + 28px chip
+const CHIP_OVERHANG = 36; // 8px gap + 28px name chip
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-/**
- * Grid metrics for a work area. All values are logical pixels relative to the
- * monitor's top-left corner.
- *
- * @param {object} workArea - {x, y, width, height} relative to the monitor
- * @param {object} monitor - {width, height}
- * @param {object} opts - {clock: boolean}
- * @returns {object} metrics
- */
+// Logical pixels, relative to the monitor's top-left corner; so is workArea.
 export function computeGrid(workArea, monitor, {clock = false} = {}) {
     let s = clamp(Math.min(workArea.width / REF.W, workArea.height / REF.H), MIN_SCALE, MAX_SCALE);
     let m;
@@ -43,8 +34,8 @@ export function computeGrid(workArea, monitor, {clock = false} = {}) {
 function metricsFor(s, wa, clock) {
     const U = Math.round(REF.U * s), V = Math.round(REF.V * s);
     const GX = Math.round(REF.GX * s), GY = Math.round(REF.GY * s);
-    // with the clock: 18 above it, the clock and date (about 155 tall, and
-    // it scales with s too), and about 40 below
+    // the clock takes 212: 18 above, about 155 for the time and date, and
+    // about 40 below
     const headerGap = Math.round((clock ? 212 : 80) * s);
     const rowsFor = (top, bottom) => Math.floor(
         (wa.height - top - PILL_H - headerGap - CHIP_OVERHANG - bottom + GY) / (V + GY));
@@ -75,8 +66,8 @@ function finishMetrics(m, wa, monitor) {
     const boardH = m.rows * m.V + (m.rows - 1) * m.GY;
     const used = m.top + PILL_H + m.headerGap + boardH + CHIP_OVERHANG + m.bottom;
     const spare = Math.max(0, wa.height - used);
-    // the board stays high with the slack left below it; with tight
-    // margins split it 40/60 so the block does not hug the panel
+    // spare height goes below the board, except with tight margins, where
+    // it's split 40/60 so the board doesn't hug the panel
     const top = m.top + (m.tight ? Math.round(spare * 0.4) : 0);
     const pillY = wa.y + top;
     const pillW = Math.min(PILL_W, monitor.width - 32);
@@ -98,7 +89,7 @@ function finishMetrics(m, wa, monitor) {
     };
 }
 
-/** Pixel rect of a grid rect, relative to the board origin of its page. */
+// relative to the board origin of its page
 export function cellRect(g, r) {
     return {
         x: r.x * (g.U + g.GX),
@@ -107,8 +98,6 @@ export function cellRect(g, r) {
         height: r.h * g.V + (r.h - 1) * g.GY,
     };
 }
-
-// ---- occupancy ----
 
 class Pages {
     constructor(cols, rows) {
@@ -159,7 +148,7 @@ class Pages {
         return this.pages[p]?.[y * this.cols + x] ?? null;
     }
 
-    /** First free spot (page, row, column) for any of the [w, h] sizes, tried in turn. */
+    // scans by page, row, column and tries each [w, h] at every spot
     findSpace(sizes) {
         for (let p = 0; p <= 1000; p++) {
             for (let y = 0; y < this.rows; y++) {
@@ -175,17 +164,8 @@ class Pages {
     }
 }
 
-/**
- * First-fit packing: each item goes at the earliest free position (page,
- * row, column) where it fits, so later small tiles fill holes left by
- * earlier big ones. Items with `flex: true` and a 2-cell size may turn
- * 2x1 into 1x2 (or back) to fit earlier.
- *
- * @param {Array} items - [{id, w, h, flex?}] in priority order
- * @param {number} cols
- * @param {number} rows
- * @returns {object} id -> {page, x, y, w, h}
- */
+// Each item takes the first spot it fits in, so small tiles fill the holes
+// big ones leave. A flex item of 2 cells may turn on its side to fit sooner.
 export function firstFit(items, cols, rows) {
     const occ = new Pages(cols, rows);
     const out = {};
@@ -201,7 +181,6 @@ export function firstFit(items, cols, rows) {
     return out;
 }
 
-/** Number of pages a layout uses. */
 export function pageCount(tiles) {
     let n = 1;
     for (const t of Object.values(tiles))
@@ -209,12 +188,9 @@ export function pageCount(tiles) {
     return n;
 }
 
-/**
- * Empty cells that leave a visible gap: a tile continues to their right on
- * the same row, or a tile starts on a later row of the same page. Space to
- * the right of the last tiles is not a hole. Every empty cell on a page
- * before the last one counts, since content continues on the next page.
- */
+// An empty cell is a hole when a tile follows it on the same row or starts on
+// a later row of the page. Space after the last tiles isn't, except on pages
+// before the last, where every empty cell is.
 export function findHoles(tiles, cols, rows) {
     const occ = Pages.from(tiles, cols, rows);
     const holes = [];
@@ -239,16 +215,9 @@ export function findHoles(tiles, cols, rows) {
     return holes;
 }
 
-/**
- * Removes holes: first by growing a neighbouring tile that has enough apps
- * to fill the extra slots, then by moving the last 1x1 tile into the hole.
- * Holes that neither can fix stay. Mutates and returns tiles.
- *
- * @param {object} tiles - id -> rect
- * @param {number} cols
- * @param {number} rows
- * @param {object} counts - id -> number of apps
- */
+// Grows a neighbour that has the apps to fill the new slots, or else moves the
+// last tile into the hole, or else grows a neighbour anyway. Mutates tiles.
+// counts maps folder ids to app counts.
 export function fillHoles(tiles, cols, rows, counts = {}) {
     for (let guard = 0; guard < 200; guard++) {
         const holes = findHoles(tiles, cols, rows);
@@ -282,7 +251,7 @@ export function fillHoles(tiles, cols, rows, counts = {}) {
                 fixed = true;
                 break;
             }
-            // move the last tile (reading order) into the hole if it fits
+            // pull the last tile into the hole if it fits
             const order = readingOrder(tiles);
             const lastId = order[order.length - 1];
             const lt = tiles[lastId];
@@ -297,8 +266,8 @@ export function fillHoles(tiles, cols, rows, counts = {}) {
                 }
                 occ.put(lastId, lt.page, lt.x, lt.y, lt.w, lt.h);
             }
-            // last resort: a tile with a spare slot beats a hole in the grid;
-            // pick the growth that leaves the fewest empty slots
+            // an empty slot inside a tile looks better than a hole in the grid,
+            // so take the growth that wastes the least
             if (cands.length) {
                 const waste = c => c.r.w * c.r.h - (counts[c.id] ?? 0);
                 cands.sort((a, b) => waste(a) - waste(b));
@@ -313,17 +282,9 @@ export function fillHoles(tiles, cols, rows, counts = {}) {
     return tiles;
 }
 
-/**
- * Tile sizes for a generated layout. Folders are ranked by usage: the top
- * two get 3x2 and 2x2, the middle get 2 cells, the rest 1x1. No tile gets
- * more slots than it has apps. If everything would not fit on one page,
- * tiles are shrunk from the middle up before a second page is used.
- *
- * @param {Array} folders - [{id, count}] most used first
- * @param {number} cols
- * @param {number} rows
- * @returns {Array} [{id, w, h, flex}]
- */
+// Folders come most used first. The top two get 3x2 and 2x2, the next half
+// 2 cells and the rest 1x1, never with more slots than apps. If that won't
+// fit on a page, tiles shrink from the middle up before a second page is used.
 export function planSizes(folders, cols, rows) {
     const n = folders.length;
     const ladder = [[3, 2], [2, 2], [2, 1], [1, 1]];
@@ -382,7 +343,7 @@ export function planSizes(folders, cols, rows) {
     }));
 }
 
-// one step down the size ladder: 3x2, 2x2, 2x1, 1x1
+// 3x2 -> 2x2 -> 2x1 -> 1x1
 function shrink(p) {
     if (p.w * p.h <= 2)
         return {...p, w: 1, h: 1, flex: false};
@@ -391,7 +352,6 @@ function shrink(p) {
     return {...p, h: 1, flex: p.w * p.h === 4};
 }
 
-/** Generated first-run layout. */
 export function generateLayout(folders, cols, rows) {
     const counts = Object.fromEntries(folders.map(f => [f.id, f.count]));
     let plan = planSizes(folders, cols, rows);
@@ -411,17 +371,14 @@ export function generateLayout(folders, cols, rows) {
     return fillHoles(firstFit(plan, cols, rows), cols, rows, counts);
 }
 
-/** Reading order of a layout: page, then row, then column. */
+// page, then row, then column
 export function readingOrder(tiles) {
     return Object.entries(tiles)
         .sort(([, a], [, b]) => a.page - b.page || a.y - b.y || a.x - b.x)
         .map(([id]) => id);
 }
 
-/**
- * Reflows a layout made for another grid: keeps the reading order and each
- * tile's size (clamped to the new grid) and packs first-fit.
- */
+// for a layout made on another grid: same order and sizes, packed first-fit
 export function reflow(tiles, cols, rows) {
     const items = readingOrder(tiles).map(id => ({
         id,
@@ -431,7 +388,6 @@ export function reflow(tiles, cols, rows) {
     return firstFit(items, cols, rows);
 }
 
-/** True if a rect is inside the grid and overlaps none of the other tiles. */
 export function canPlace(tiles, id, r, cols, rows) {
     if (r.x < 0 || r.y < 0 || r.w < 1 || r.h < 1 || r.x + r.w > cols || r.y + r.h > rows)
         return false;
@@ -444,18 +400,9 @@ export function canPlace(tiles, id, r, cols, rows) {
     return true;
 }
 
-/**
- * Makes a stored layout valid for the current folders and grid: drops
- * folders that no longer exist, repacks tiles that are out of bounds or
- * overlapping, and appends new folders first-fit after the existing ones.
- * Nothing is ever dropped for lack of space; extra pages are added.
- *
- * @param {object} tiles - stored id -> rect
- * @param {Array} folderIds - current folders, most used first
- * @param {number} cols
- * @param {number} rows
- * @returns {object} id -> rect
- */
+// Drops folders that are gone, repacks tiles that are out of bounds or
+// overlap, and adds new folders after the rest. Nothing is dropped for lack
+// of space; it goes on a new page.
 export function reconcile(tiles, folderIds, cols, rows) {
     const live = new Set(folderIds);
     const kept = {};
@@ -486,16 +433,10 @@ export function reconcile(tiles, folderIds, cols, rows) {
     return kept;
 }
 
-/**
- * Picks the stored or derived layout for a grid.
- *
- * Stored format: {version: 1, last: "COLSxROWS", grids: {"COLSxROWS":
- * {tiles, generated}}}. A grid with a stored layout keeps it. A grid never
- * seen is reflowed from the most recently edited layout, or generated if the
- * user never edited one (a generated layout carries no preference to keep).
- *
- * @returns {{tiles: object, source: string}} source is stored|reflowed|generated
- */
+// stored is {version: 1, last: 'COLSxROWS', grids: {COLSxROWS: {tiles, generated}}}.
+// A grid keeps its stored layout. A new grid reflows the last edited one, or
+// gets a generated layout if the user never edited: a generated layout says
+// nothing about what they want.
 export function resolveLayout(stored, folders, cols, rows) {
     const key = `${cols}x${rows}`;
     const ids = folders.map(f => f.id);
@@ -510,10 +451,7 @@ export function resolveLayout(stored, folders, cols, rows) {
     return {tiles: generateLayout(folders, cols, rows), source: 'generated'};
 }
 
-/**
- * Returns a new stored object with `tiles` saved for this grid. An edit
- * becomes the layout other grids reflow from; a generated one does not.
- */
+// Other grids reflow from the last edit, never from a generated layout.
 export function storeLayout(stored, cols, rows, tiles, {generated = false} = {}) {
     const key = `${cols}x${rows}`;
     const grids = {...(stored?.grids ?? {})};
@@ -526,14 +464,7 @@ export function storeLayout(stored, cols, rows, tiles, {generated = false} = {})
     return {version: 1, last, grids};
 }
 
-// ---- tile contents ----
-
-/**
- * What a w x h tile shows for n apps.
- *
- * @returns {{big: number, mini: number, badge: number}} big icons, apps in
- *   the mini preview, and the +N count of apps not visible anywhere
- */
+// big icons, apps in the mini preview, and the +N for the rest
 export function tileContent(n, w, h) {
     const slots = w * h;
     if (slots === 1) {
@@ -547,13 +478,8 @@ export function tileContent(n, w, h) {
     return {big, mini, badge: n - big - mini};
 }
 
-// ---- spatial navigation ----
-
-/**
- * Index of the best candidate in direction (dx, dy) from `from`, or -1.
- * Rects are {x, y, width, height}. Score: distance along the direction plus
- * 2.2x the sideways offset, between centres; candidates must be ahead.
- */
+// Index of the nearest rect ahead in direction (dx, dy), or -1. Distances are
+// between centres, and sideways offset counts 2.2 times.
 export function pickNeighbor(from, candidates, dx, dy) {
     const cx = from.x + from.width / 2, cy = from.y + from.height / 2;
     let best = -1, bestScore = Infinity;

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Tooltip shown above overflow previews (and icons when names are hidden),
-// for the hovered or keyboard-selected item.
+// Shown for overflow previews, and for icons when app names are hidden.
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
@@ -26,7 +25,7 @@ class Tooltip extends St.BoxLayout {
         this.target = null;
     }
 
-    /** Shows [main, secondary] text above `target`, or hides with null. */
+    // a null target hides it
     showFor(target, [main, sub] = []) {
         this.target = target;
         if (!target) {

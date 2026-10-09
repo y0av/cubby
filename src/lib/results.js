@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// The results panel under the search field: apps in a 5-column grid, then
-// settings, files and other provider results as chips.
-
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
@@ -19,13 +16,12 @@ import {setStyleClass} from './util.js';
 const APP_COLS = 5;
 const APP_ROW_H = 122; // .cubby-result height
 const APP_GAP = 4;
-// .cubby-results padding and border on both sides
+// .cubby-results padding and border, left and right
 const PANEL_INSET_X = 26;
 const RESULT_ICON = 56;
 const CHIP_ICON = 18;
 const POP_STAGGER_MS = 20;
 
-/** Left-to-right layout that wraps children onto new rows. */
 const WrapLayout = GObject.registerClass(
 class WrapLayout extends Clutter.LayoutManager {
     _init(spacing = 8, rowSpacing = 8) {
@@ -148,7 +144,7 @@ class OtherResult extends St.Button {
         this.result = result;
         const box = new St.BoxLayout({style_class: 'cubby-other-box', y_align: Clutter.ActorAlign.CENTER});
         let icon = null;
-        // a provider's broken icon should not cost the result
+        // show the result even if its icon fails
         try {
             icon = result.iconName
                 ? new St.Icon({icon_name: result.iconName, icon_size: CHIP_ICON})
@@ -204,15 +200,9 @@ class ResultsPanel extends St.BoxLayout {
         this._others = [];
     }
 
-    // Result items are kept across keystrokes: results that stay slide to
-    // their new place, only new ones pop in, so typing does not flash.
-
-    /**
-     * @param {Array} apps - [{app, caption, live}]
-     * @param {Array} others - provider and system results
-     * @param {string|null} none - message when nothing matches
-     * @param {object} opts - {animate, focusApp}
-     */
+    // Items are reused across keystrokes so typing doesn't flash: results
+    // that stay slide to their new spot and only new ones pop in.
+    // apps are {app, caption, live}; none is the no-match message or null.
     setResults(apps, others, none, {animate = true, focusApp = null} = {}) {
         const wasEmpty = this.items.length === 0 && !this._none.visible;
         this._updateApps(apps, animate, focusApp);
@@ -312,7 +302,7 @@ class ResultsPanel extends St.BoxLayout {
     }
 });
 
-/** Caption under an app result: "Running · Chat", "Pinned"... */
+// "Running · Chat", "Pinned", ...
 export function appCaption(app, model) {
     const running = app.state === Shell.AppState.RUNNING;
     const where = model.isFavorite(app.id) ? _('Pinned') : model.groupOf(app.id)?.name ?? '';

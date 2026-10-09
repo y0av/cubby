@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// The search field: a fixed-width glass pill. While typing, its right side
-// shows the result count, an Enter keycap and what Enter will do.
+// While searching, the right end shows the result count and what Enter does.
 
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
@@ -60,10 +59,7 @@ export const SearchPill = GObject.registerClass({
         this.entry.set_text(t);
     }
 
-    /**
-     * @param {string} count - "10 apps · 4 other", or ''
-     * @param {string} action - "Switch to Telegram", or '' for none
-     */
+    // e.g. ('10 apps · 4 other', 'Switch to Telegram'); '' hides either part
     setHint(count, action) {
         this._hint.visible = !!(count || action);
         this._count.text = count;

@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// How the layer opens, closes and launches apps.
-
 import Clutter from 'gi://Clutter';
 import Shell from 'gi://Shell';
 
-// Opening, the tiles rise in a wave from the top-left corner, where the
-// Show Apps button usually is. The wave takes the same time whatever the
-// size of the grid.
+// Tiles open in a wave from the top-left, where Show Apps usually is. The
+// wave takes as long on a big grid as on a small one.
 const OPEN_SPREAD_MS = 220;
 const OPEN_TILE_MS = 480;
 const OPEN_FADE_MS = 320;
@@ -25,19 +22,8 @@ function waveOrder(rect, {cols, rows}) {
     return far > 0 ? Math.min(1, (rect.x + 1.4 * rect.y) / far) : 0;
 }
 
-/**
- * Fades an actor in while it scales and slides to rest from `scale` and
- * `dy`. Only the movement overshoots: an overshooting opacity would wrap
- * past 255 and blink.
- *
- * @param {Clutter.Actor} actor
- * @param {object} params
- * @param {number} [params.scale] - starting scale
- * @param {number} [params.dy] - starting translation_y
- * @param {number} [params.delay] - in ms
- * @param {number} params.fade - fade duration in ms
- * @param {number} params.settle - scale and slide duration in ms
- */
+// Fades in while settling from `scale` and a translation of `dy`. Only the
+// settle overshoots, since an overshooting opacity wraps past 255 and blinks.
 export function popIn(actor, {scale = 1, dy = 0, delay = 0, fade, settle}) {
     actor.opacity = 0;
     actor.set_scale(scale, scale);
@@ -51,7 +37,6 @@ export function popIn(actor, {scale = 1, dy = 0, delay = 0, fade, settle}) {
     });
 }
 
-/** Puts a tile back at rest, stopping any open or close animation. */
 export function settleTile(tile) {
     for (const prop of ['opacity', 'scale-x', 'scale-y', 'translation-y'])
         tile.remove_transition(prop);
@@ -60,12 +45,7 @@ export function settleTile(tile) {
     tile.translation_y = 0;
 }
 
-/**
- * @param {Tile[]} tiles - every tile; only those on `page` animate
- * @param {number} page - the page being shown
- * @param {object} grid - metrics from computeGrid
- * @param {St.Widget} field - the search field, which drops in
- */
+// only the tiles on `page` animate; field is the search field
 export function animateOpen(tiles, page, grid, field) {
     for (const tile of tiles) {
         settleTile(tile);
@@ -84,12 +64,7 @@ export function animateOpen(tiles, page, grid, field) {
     popIn(field, {scale: 0.97, dy: -14, delay: 40, fade: 300, settle: 420});
 }
 
-/**
- * The reverse wave, faster, with the tiles sinking. Everything in `faders`
- * fades out with them.
- *
- * @returns {number} how long it takes, in ms
- */
+// The opening wave reversed and faster. Returns its length in ms.
 export function animateClose(tiles, page, grid, faders) {
     let longest = 0;
     for (const tile of tiles) {
@@ -112,12 +87,8 @@ export function animateClose(tiles, page, grid, faders) {
     return longest;
 }
 
-/**
- * Launching an app: its icon swells and fades while `layer` grows a little
- * towards it and everything in `faders` fades, as if going into the app.
- *
- * @returns {number} how long it takes, in ms
- */
+// The icon swells and fades while the layer zooms in a little towards it,
+// as if going into the app. Returns the length in ms.
 export function animateLaunch(layer, icon, faders) {
     icon.set_pivot_point(0.5, 0.5);
     icon.ease({
@@ -145,14 +116,13 @@ export function animateLaunch(layer, icon, faders) {
     return LAUNCH_MS;
 }
 
-/** Puts a launched icon back the way it was. */
 export function resetLaunchIcon(icon) {
     icon.remove_all_transitions();
     icon.set_scale(1, 1);
     icon.opacity = 255;
 }
 
-/** Eases a blur on an actor, adding the effect first and dropping it at 0. */
+// adds the effect when needed and removes it once back at 0
 export function easeBlur(actor, name, radius, duration) {
     if (!actor.get_effect(name)) {
         if (radius === 0)

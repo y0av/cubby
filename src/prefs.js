@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Preferences for Cubby (libadwaita).
-
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
@@ -28,7 +26,6 @@ export default class CubbyPreferences extends ExtensionPreferences {
         });
         window.add(page);
 
-        // ---- appearance ----
         const look = new Adw.PreferencesGroup({title: _('Appearance')});
         page.add(look);
 
@@ -77,7 +74,6 @@ export default class CubbyPreferences extends ExtensionPreferences {
                 settings.set_string('accent-override', rgbaToHex(color.rgba));
         });
 
-        // ---- behaviour ----
         const behaviour = new Adw.PreferencesGroup({title: _('Behaviour')});
         page.add(behaviour);
         const stock = new Adw.SwitchRow({
@@ -113,7 +109,6 @@ export default class CubbyPreferences extends ExtensionPreferences {
         reset.add_suffix(resetButton);
         behaviour.add(reset);
 
-        // ---- how to use ----
         const help = new Adw.PreferencesGroup({
             title: _('How to use'),
             description: _('Folders come from your app folders; arranging them never changes the folders themselves.'),

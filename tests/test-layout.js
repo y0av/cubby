@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Unit tests for the pure layout logic. Run: gjs -m tests/test-layout.js
+// gjs -m tests/test-layout.js
 import * as L from '../src/lib/layoutEngine.js';
 
 let failures = 0, passes = 0;
@@ -30,7 +30,7 @@ function inBounds(tiles, cols, rows) {
     return Object.values(tiles).every(t => t.x >= 0 && t.y >= 0 && t.x + t.w <= cols && t.y + t.h <= rows);
 }
 
-// ---- grid metrics at the target resolutions ----
+// grid metrics at the target resolutions
 const targets = [
     // name, monitor (logical), work area relative to monitor
     ['1920x1200 Dash to Panel', {width: 1920, height: 1200}, {x: 0, y: 48, width: 1920, height: 1152}],
@@ -59,7 +59,7 @@ for (const clock of [false, true]) {
     eq([c.cols, c.rows, c.boardY, c.pillY], [9, 3, 404, 132], 'reference positions (clock)');
 }
 
-// ---- tile contents and +N ----
+// tile contents and +N
 eq(L.tileContent(10, 3, 2), {big: 5, mini: 4, badge: 1}, '3x2 with 10 apps');
 eq(L.tileContent(6, 3, 2), {big: 6, mini: 0, badge: 0}, '3x2 with exactly 6 apps');
 eq(L.tileContent(7, 3, 2), {big: 5, mini: 2, badge: 0}, '3x2 with 7 apps: no badge when all visible');
@@ -70,7 +70,7 @@ eq(L.tileContent(11, 1, 2), {big: 1, mini: 4, badge: 6}, '1x2 with 11 apps: +6')
 eq(L.tileContent(2, 2, 1), {big: 2, mini: 0, badge: 0}, '2x1 with 2 apps');
 eq(L.tileContent(0, 2, 2), {big: 0, mini: 0, badge: 0}, 'empty');
 
-// ---- first fit ----
+// first fit
 {
     const t = L.firstFit([{id: 'a', w: 3, h: 2}, {id: 'b', w: 2, h: 2}, {id: 'c', w: 1, h: 1}], 9, 3);
     eq(t.a, {page: 0, x: 0, y: 0, w: 3, h: 2}, 'first tile at origin');
@@ -98,7 +98,7 @@ eq(L.tileContent(0, 2, 2), {big: 0, mini: 0, badge: 0}, 'empty');
     eq(t.f27, {page: 1, x: 0, y: 0, w: 1, h: 1}, 'the 28th starts page 2');
 }
 
-// ---- generated layouts: no holes, no overlap, fits ----
+// generated layouts: no holes, no overlap, fits
 function folderSet(counts) {
     return counts.map((c, i) => ({id: `g${i}`, count: c}));
 }
@@ -136,7 +136,7 @@ for (const [name, counts] of Object.entries(sets)) {
     eq([t.g0.w, t.g0.h, t.g1.w, t.g1.h], [3, 2, 2, 2], 'top two folders get 3x2 and 2x2');
 }
 
-// ---- reflow keeps order, and reconcile never drops ----
+// reflow keeps order, and reconcile never drops
 {
     const t = L.generateLayout(folderSet(sets['eleven folders']), 9, 3);
     const order = L.readingOrder(t);
@@ -168,7 +168,7 @@ for (const [name, counts] of Object.entries(sets)) {
     eq(r.extra, {page: 1, x: 0, y: 0, w: 1, h: 1}, 'new folder on a full grid opens page 2');
 }
 
-// ---- resolve / store ----
+// resolve / store
 {
     const folders = folderSet(sets['eleven folders']);
     const first = L.resolveLayout({}, folders, 9, 3);
@@ -194,7 +194,7 @@ for (const [name, counts] of Object.entries(sets)) {
     eq(stored.last, '12x4', 'last edited grid recorded');
 }
 
-// ---- canPlace ----
+// canPlace
 {
     const t = {a: {page: 0, x: 0, y: 0, w: 2, h: 2}, b: {page: 0, x: 2, y: 0, w: 1, h: 1}};
     ok(L.canPlace(t, 'b', {page: 0, x: 3, y: 0, w: 1, h: 1}, 9, 3), 'move into free cell');
@@ -204,7 +204,7 @@ for (const [name, counts] of Object.entries(sets)) {
     ok(L.canPlace(t, 'b', {page: 1, x: 0, y: 0, w: 1, h: 1}, 9, 3), 'other page is free');
 }
 
-// ---- spatial navigation ----
+// spatial navigation
 {
     const r = (x, y, w = 100, h = 100) => ({x, y, width: w, height: h});
     // a row of three, a row below

@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Small pieces of the layer: the right-click menu, the edit-mode banner and
-// the first-run tip.
-
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -15,13 +12,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 
 import {applyColorScheme} from './theme.js';
 
-/** Right-click menu: Edit layout, Show app names, Show clock, Reset, Preferences. */
 export class ContextMenu {
-    /**
-     * @param {St.Widget} owner - the layer
-     * @param {object} actions - {edit, reset, prefs}
-     * @param {Gio.Settings} settings
-     */
     constructor(owner, actions, settings) {
         this._settings = settings;
         this.menu = new PopupMenu.PopupMenu(Main.layoutManager.dummyCursor, 0, St.Side.TOP);
@@ -59,7 +50,7 @@ export class ContextMenu {
         applyColorScheme(this.menu.actor, dark);
     }
 
-    /** Opens at stage coordinates. */
+    // x, y in stage coordinates
     open(x, y) {
         const check = on => (on ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
         this._names.setOrnament(check(this._settings.get_boolean('show-app-names')));
@@ -78,7 +69,7 @@ export class ContextMenu {
     }
 }
 
-/** Banner that replaces the search field in edit mode. */
+// Takes the search field's place while editing.
 export const EditBar = GObject.registerClass(
 class EditBar extends St.BoxLayout {
     _init(onDone) {
@@ -109,7 +100,7 @@ class EditBar extends St.BoxLayout {
     }
 });
 
-/** One-time tip near the bottom, dismissed for good with "Got it". */
+// First-run tip. "Got it" dismisses it for good.
 export const Coach = GObject.registerClass(
 class Coach extends St.BoxLayout {
     _init(onDismiss) {
@@ -123,14 +114,6 @@ class Coach extends St.BoxLayout {
         this._leaving = false;
     }
 
-    /**
-     * Fades the tip in or out.
-     *
-     * @param {boolean} shown
-     * @param {object} [params]
-     * @param {number} [params.delay] - before fading in, in ms
-     * @param {boolean} [params.instant] - hide without fading
-     */
     setShown(shown, {delay = 0, instant = false} = {}) {
         if (shown && !this.visible) {
             this.show();

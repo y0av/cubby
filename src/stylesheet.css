@@ -1,9 +1,8 @@
-/* Cubby. Light and dark glass are class variants on the layer root
-   (.cubby-dark / .cubby-light). Accent-coloured parts (selection, caret, keycap,
-   edit outlines, Done) are styled from JS because the accent may be a
-   custom hex. Sizes that depend on the grid unit are set from JS. */
+/* .cubby-dark or .cubby-light on the layer picks the glass style. Accent
+   colours are set from JS because the accent can be a custom hex, and so are
+   sizes that follow the grid. */
 
-/* ---- hover and selection fade instead of snapping ---- */
+/* hover and selection fade instead of snapping */
 .cubby-slot,
 .cubby-chip,
 .cubby-pill,
@@ -16,7 +15,7 @@
 .cubby-coach-ok,
 .cubby-dot { transition-duration: 120ms; }
 
-/* ---- shared shapes ---- */
+/* shared shapes */
 .cubby-tile {
   border-radius: 32px;
   border-width: 1px;
@@ -75,7 +74,7 @@
   border-style: solid;
 }
 
-/* ---- search field ---- */
+/* search field */
 .cubby-pill {
   height: 60px;
   border-radius: 30px;
@@ -106,7 +105,7 @@
   padding: 1px 7px;
 }
 
-/* ---- clock ---- */
+/* clock */
 .cubby-clock { spacing: 10px; }
 .cubby-clock-row { spacing: 8px; }
 .cubby-clock-time {
@@ -138,7 +137,7 @@
   border-style: solid;
 }
 
-/* ---- search results ---- */
+/* search results */
 .cubby-results {
   padding: 12px;
   spacing: 10px;
@@ -173,7 +172,7 @@
 .cubby-other-source { font-size: 13px; }
 .cubby-none { padding: 22px 18px; font-size: 15px; }
 
-/* ---- folder view ---- */
+/* folder view */
 .cubby-shield { background-color: rgba(12, 12, 20, 0.42); }
 .cubby-folder {
   border-radius: 32px;
@@ -201,7 +200,7 @@
 .cubby-folder-item-box { spacing: 13px; }
 .cubby-folder-name { font-size: 14px; font-weight: 600; max-width: 150px; text-align: center; }
 
-/* ---- tooltip ---- */
+/* tooltip */
 .cubby-tooltip {
   padding: 6px 11px;
   border-radius: 10px;
@@ -213,7 +212,7 @@
 .cubby-tooltip-main { font-size: 13.5px; font-weight: 600; }
 .cubby-tooltip-sub { font-size: 13px; font-weight: 500; }
 
-/* ---- edit mode ---- */
+/* edit mode */
 .cubby-tile-dragging { box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45); }
 .cubby-grip {
   border-radius: 14px;
@@ -278,7 +277,7 @@
 .cubby-menu .popup-menu-item { border-radius: 10px; }
 .cubby-menu-accel { font-size: 13px; padding-left: 20px; }
 
-/* ---- page dots ---- */
+/* page dots */
 .cubby-dots { spacing: 10px; }
 .cubby-dot {
   width: 8px;
@@ -287,7 +286,7 @@
   padding: 0;
 }
 
-/* ---- dark glass ---- */
+/* dark glass */
 .cubby-dark .cubby-tile { background-color: rgba(28, 27, 38, 0.74); border-color: rgba(255, 255, 255, 0.10); }
 .cubby-dark .cubby-name,
 .cubby-dark .cubby-chip,
@@ -352,7 +351,7 @@
 .cubby-dark .cubby-dot { background-color: rgba(255, 255, 255, 0.35); }
 .cubby-dark .cubby-dot:checked { background-color: #eff1f5; }
 
-/* ---- light glass ---- */
+/* light glass */
 .cubby-light .cubby-tile { background-color: rgba(244, 245, 248, 0.80); border-color: rgba(255, 255, 255, 0.75); }
 .cubby-light .cubby-name,
 .cubby-light .cubby-chip,

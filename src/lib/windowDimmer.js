@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// Fades and slightly shrinks the windows on one monitor while the layer is
-// open. Each window actor gets a pivot chosen so that the per-actor scale
-// matches scaling the whole monitor about one point, which leaves the
-// wallpaper (also inside window_group) untouched.
+// Each window gets its own pivot so that scaling them one by one looks like
+// scaling the whole monitor about one point. Scaling window_group instead
+// would scale the wallpaper too.
 
 import Clutter from 'gi://Clutter';
 import Graphene from 'gi://Graphene';
@@ -20,10 +19,6 @@ export class WindowDimmer {
         this._dimmed = new Set();
     }
 
-    /**
-     * @param {number} monitorIndex
-     * @param {object} anim - {duration, mode}
-     */
     dim(monitorIndex, {duration = 0, mode = Clutter.AnimationMode.EASE_OUT_CUBIC} = {}) {
         const monitor = Main.layoutManager.monitors[monitorIndex];
         if (!monitor)

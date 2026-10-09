@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// The full-screen layer that replaces Show Apps on the primary monitor. It
-// owns the scrim, the board, the search field and the overlays, and keeps
-// the state machine (board, search, folder, edit) and keyboard handling.
+// Covers the primary monitor and owns everything on it. Switches between the
+// board, search, folder and edit modes and handles the keyboard.
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
@@ -55,7 +54,7 @@ const ARROWS = {
     [Clutter.KEY_Down]: [0, 1],
 };
 
-/** Scales the pixel fields of grid metrics by the St scale factor. */
+// computeGrid works in logical pixels
 function scaleGrid(g, sf) {
     if (sf === 1)
         return {...g, sf};
@@ -67,7 +66,7 @@ function scaleGrid(g, sf) {
     return out;
 }
 
-/** The item after `current` (before it if backward), wrapping around; an end one without `current`. */
+// wraps around; with no current item, starts from the first or last
 function cycle(items, current, backward) {
     const i = items.indexOf(current);
     if (i < 0)
@@ -108,7 +107,7 @@ export const Layer = GObject.registerClass({
         this._isOpen = false;
         this._longPress = null;
         this._grab = null;
-        // owner of the stage handler that closes on a press on another monitor
+        // signal owner for _closeOnOutsidePress, connected while open
         this._outsideWatch = {};
         this._launchIcon = null;
         this._folderTile = null;
@@ -247,7 +246,7 @@ export const Layer = GObject.registerClass({
         return this._selected;
     }
 
-    // ---- controller interface used by tiles and results ----
+    // used by tiles, folder items and results
 
     get focusApp() {
         return this._model.focusApp;
@@ -385,8 +384,6 @@ export const Layer = GObject.registerClass({
             this.tooltip.showFor(null);
     }
 
-    // ---- geometry and theme ----
-
     _syncGeometry() {
         const m = this.monitor;
         if (!m)
@@ -468,8 +465,6 @@ export const Layer = GObject.registerClass({
         this._clockHalo.opacity = this.clock.opacity;
     }
 
-    // ---- open / close ----
-
     toggle() {
         if (this._isOpen)
             this.close();
@@ -536,11 +531,7 @@ export const Layer = GObject.registerClass({
         }
     }
 
-    /**
-     * @param {object} [params]
-     * @param {boolean} [params.instant] - no animation
-     * @param {Clutter.Actor} [params.towards] - the icon of an app being launched
-     */
+    // towards is the icon of an app being launched
     close({instant = false, towards = null} = {}) {
         if (!this._isOpen)
             return;
@@ -613,8 +604,6 @@ export const Layer = GObject.registerClass({
         this.mode = Mode.BOARD;
     }
 
-    // ---- edit mode ----
-
     setEditing(on, {tile = null} = {}) {
         if (on === (this.mode === Mode.EDIT))
             return;
@@ -679,8 +668,6 @@ export const Layer = GObject.registerClass({
         next.grab_key_focus();
     }
 
-    // ---- clock ----
-
     _syncClock() {
         const enabled = this._settings.get_boolean('show-clock');
         const ticking = enabled && this._isOpen;
@@ -697,10 +684,8 @@ export const Layer = GObject.registerClass({
         }
     }
 
-    // ---- first-run tip ----
-
-    // The tip waits a moment after the layer opens, so it does not compete
-    // with the opening wave; coming back from a folder or search it doesn't.
+    // On open the tip waits for the tiles' wave; back from a folder or search
+    // it shows straight away.
     _syncCoach({delay = 0} = {}) {
         const show = this._isOpen && !this._settings.get_boolean('tip-dismissed') &&
             this.mode === Mode.BOARD && !!this.grid;
@@ -719,8 +704,6 @@ export const Layer = GObject.registerClass({
             this._settings.set_boolean('tip-dismissed', true);
         this._syncCoach();
     }
-
-    // ---- search ----
 
     _onQueryChanged(text) {
         const searching = text.trim() !== '';
@@ -756,8 +739,6 @@ export const Layer = GObject.registerClass({
         text.grab_key_focus();
         text.event(event, false);
     }
-
-    // ---- selection ----
 
     _showSelection() {
         return this.mode === Mode.SEARCH || this._kb;
@@ -834,7 +815,7 @@ export const Layer = GObject.registerClass({
             this._edit.refresh();
     }
 
-    // Candidates for arrow and Tab navigation in the current mode.
+    // what arrows and Tab move between in this mode
     _candidates() {
         if (this.mode === Mode.SEARCH)
             return this.results.items;
@@ -886,15 +867,13 @@ export const Layer = GObject.registerClass({
             ensureActorVisibleInScrollView(this.folderView.scrollView, item);
     }
 
-    // ---- app menu ----
-
-    // The app item (tile slot, folder app or search result) an actor is in.
+    // the tile slot, folder app or search result containing actor
     _appItemFor(actor) {
         return findAncestor(actor, a => a.kind === 'app' && a.app, this);
     }
 
-    // GNOME's own app menu (New Window, app actions, Pin, App Details,
-    // Quit). Its actions call Main.overview.hide(), which closes the layer.
+    // GNOME's own app menu. Its actions call Main.overview.hide(), which closes
+    // the layer too.
     _openAppMenu(item, {keyboard = false} = {}) {
         // the previous menu is dropped only now: its App Details action
         // finishes asynchronously after the menu has closed
@@ -928,8 +907,6 @@ export const Layer = GObject.registerClass({
         if (keyboard)
             menu.actor.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
     }
-
-    // ---- input ----
 
     _onCapturedEvent(_actor, event) {
         const type = event.type();
@@ -1015,7 +992,7 @@ export const Layer = GObject.registerClass({
         }
 
         if (button === Clutter.BUTTON_SECONDARY && this.mode !== Mode.EDIT) {
-            // an app: GNOME's own app menu; anywhere else on the board: ours
+            // GNOME's menu on an app, ours anywhere else on the board
             const appItem = this._appItemFor(source);
             if (appItem) {
                 this._openAppMenu(appItem);
@@ -1140,8 +1117,8 @@ export const Layer = GObject.registerClass({
         return Clutter.EVENT_STOP;
     }
 
-    // Menu key or Shift+F10: the app menu for a selected app, the layout
-    // menu on the board. Returns whether a menu opened.
+    // Menu or Shift+F10 opens the app menu on a selected app, or the layout
+    // menu on the board. Returns whether anything opened.
     _openMenuForSelection() {
         const appItem = this._selected ? this._appItemFor(this._selected) : null;
         if (appItem) {
@@ -1164,7 +1141,8 @@ export const Layer = GObject.registerClass({
         ensureActorVisibleInScrollView(this.folderView.scrollView, item);
     }
 
-    // Esc: menu, then edit mode, then folder, then search, then close.
+    // Esc backs out one level: a drag, edit mode, the folder, the search, and
+    // finally the layer. Menus handle their own Esc.
     _stepBack() {
         if (this.folderView.dragging) {
             this._endFolderDrag(false);

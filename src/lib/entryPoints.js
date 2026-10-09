@@ -23,10 +23,6 @@ function bindToggleKey(handler) {
 }
 
 export class EntryPoints {
-    /**
-     * @param {object} layer - the Layer; needs isOpen, open(), close(), toggle()
-     * @param {Gio.Settings} settings - the extension's settings
-     */
     constructor(layer, settings) {
         this._layer = layer;
         this._settings = settings;
@@ -151,7 +147,7 @@ export class EntryPoints {
         });
     }
 
-    // runs fn with the overrides ignoring the calls it causes
+    // our own hide() and button flips come back through the overrides
     _quietly(fn) {
         this._syncing = true;
         try {
