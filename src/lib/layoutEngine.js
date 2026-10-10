@@ -7,7 +7,7 @@
 const REF = {U: 156, V: 150, GX: 34, GY: 64, W: 1920, H: 1152};
 const MIN_SCALE = 0.66;
 const MAX_SCALE = 1.3;
-export const MAX_COLS = 12;
+const MAX_COLS = 12;
 const MAX_ROWS = 6;
 export const MAX_TILE_W = 4;
 export const MAX_TILE_H = 3;

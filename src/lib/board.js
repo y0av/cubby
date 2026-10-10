@@ -8,6 +8,8 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+
 import {Frost} from './frost.js';
 import {drawDashed} from './drawing.js';
 import {Tile} from './tile.js';
@@ -38,6 +40,8 @@ export const Board = GObject.registerClass({
         this.grid = null;
         this.page = 0;
         this.nPages = 1;
+        this._writing = false;
+        this._scrollAcc = 0;
 
         this._strip = new St.Widget({layout_manager: new Clutter.FixedLayout()});
         this.add_child(this._strip);
@@ -366,7 +370,7 @@ export const Board = GObject.registerClass({
             const dot = new St.Button({
                 style_class: 'cubby-dot',
                 can_focus: false,
-                accessible_name: `Page ${i + 1}`,
+                accessible_name: _('Page %d').format(i + 1),
             });
             dot.connect('clicked', () => this.setPage(i, true));
             this._dots.add_child(dot);
@@ -403,7 +407,7 @@ export const Board = GObject.registerClass({
             step = -1;
         } else if (dir === Clutter.ScrollDirection.SMOOTH) {
             const [dx, dy] = event.get_scroll_delta();
-            this._scrollAcc = (this._scrollAcc ?? 0) + (Math.abs(dx) > Math.abs(dy) ? dx : dy);
+            this._scrollAcc += Math.abs(dx) > Math.abs(dy) ? dx : dy;
             if (Math.abs(this._scrollAcc) >= 1) {
                 step = Math.sign(this._scrollAcc);
                 this._scrollAcc = 0;

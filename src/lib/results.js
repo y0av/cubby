@@ -22,6 +22,16 @@ const RESULT_ICON = 56;
 const CHIP_ICON = 18;
 const POP_STAGGER_MS = 20;
 
+// Remote providers send their icons as strings, which can fail to parse; the
+// result still shows, without an icon.
+function providerIcon(result) {
+    try {
+        return result.createIcon(CHIP_ICON);
+    } catch {
+        return null;
+    }
+}
+
 const WrapLayout = GObject.registerClass(
 class WrapLayout extends Clutter.LayoutManager {
     _init(spacing = 8, rowSpacing = 8) {
@@ -143,13 +153,9 @@ class OtherResult extends St.Button {
         this.kind = 'other';
         this.result = result;
         const box = new St.BoxLayout({style_class: 'cubby-other-box', y_align: Clutter.ActorAlign.CENTER});
-        let icon = null;
-        // show the result even if its icon fails
-        try {
-            icon = result.iconName
-                ? new St.Icon({icon_name: result.iconName, icon_size: CHIP_ICON})
-                : result.createIcon?.(CHIP_ICON);
-        } catch {}
+        const icon = result.iconName
+            ? new St.Icon({icon_name: result.iconName, icon_size: CHIP_ICON})
+            : providerIcon(result);
         if (icon) {
             icon.y_align = Clutter.ActorAlign.CENTER;
             box.add_child(icon);

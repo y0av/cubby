@@ -74,6 +74,7 @@ export class AppModel extends Signals.EventEmitter {
         this._groupOf = new Map();
         this._newApps = new Set();
         this._reloadId = 0;
+        this._writingOrders = false;
         this._focusApp = this._tracker.focus_app;
 
         const queue = () => this._queueReload();
@@ -115,6 +116,7 @@ export class AppModel extends Signals.EventEmitter {
         this._childSettings.clear();
         this.folders = [];
         this._groupOf.clear();
+        this._newApps.clear();
     }
 
     get focusApp() {
