@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cubby\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 22:42+0300\n"
+"POT-Creation-Date: 2026-10-09 22:36+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,86 +18,86 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/prefs.js:26
+#: src/prefs.js:24
 msgid "Cubby"
 msgstr ""
 
-#: src/prefs.js:32
+#: src/prefs.js:29
 msgid "Appearance"
 msgstr ""
 
-#: src/prefs.js:41 src/lib/chrome.js:40
+#: src/prefs.js:38 src/lib/chrome.js:33
 msgid "Show app names"
 msgstr ""
 
-#: src/prefs.js:41
+#: src/prefs.js:38
 msgid "Names under the big icons on tiles"
 msgstr ""
 
-#: src/prefs.js:42 src/lib/chrome.js:42
+#: src/prefs.js:39 src/lib/chrome.js:35
 msgid "Show clock"
 msgstr ""
 
-#: src/prefs.js:42
+#: src/prefs.js:39
 msgid "A large clock and the date under the search field"
 msgstr ""
 
-#: src/prefs.js:43
+#: src/prefs.js:40
 msgid "Frosted glass"
 msgstr ""
 
-#: src/prefs.js:44
+#: src/prefs.js:41
 msgid ""
 "Show a blurred copy of the wallpaper inside tiles. Uses more graphics memory."
 msgstr ""
 
-#: src/prefs.js:47
+#: src/prefs.js:44
 msgid "Custom accent colour"
 msgstr ""
 
-#: src/prefs.js:48
+#: src/prefs.js:45
 msgid "Off follows the system accent colour"
 msgstr ""
 
-#: src/prefs.js:51
+#: src/prefs.js:48
 msgid "Accent colour"
 msgstr ""
 
-#: src/prefs.js:81
+#: src/prefs.js:82
 msgid "Behaviour"
 msgstr ""
 
-#: src/prefs.js:84
+#: src/prefs.js:85
 msgid "Use the stock app grid instead"
 msgstr ""
 
-#: src/prefs.js:85
+#: src/prefs.js:86
 msgid "Show Apps and Super+A open GNOME’s own app grid again"
 msgstr ""
 
-#: src/prefs.js:91 src/lib/chrome.js:45
+#: src/prefs.js:92 src/lib/chrome.js:38
 msgid "Reset layout"
 msgstr ""
 
-#: src/prefs.js:92
+#: src/prefs.js:93
 msgid "Forget every arrangement and size the folders by use again"
 msgstr ""
 
-#: src/prefs.js:95 src/prefs.js:105
+#: src/prefs.js:96 src/prefs.js:106
 msgid "Reset"
 msgstr ""
 
-#: src/prefs.js:101
+#: src/prefs.js:102
 msgid "Reset the layout?"
 msgstr ""
 
-#: src/prefs.js:102
+#: src/prefs.js:103
 msgid ""
 "Your tile positions and sizes on every screen size will be replaced by a "
 "generated layout."
 msgstr ""
 
-#: src/prefs.js:104
+#: src/prefs.js:105
 msgid "Cancel"
 msgstr ""
 
@@ -130,7 +130,7 @@ msgid ""
 "opens a new window"
 msgstr ""
 
-#: src/prefs.js:125 src/lib/chrome.js:32
+#: src/prefs.js:125 src/lib/chrome.js:25
 msgid "Edit layout"
 msgstr ""
 
@@ -157,191 +157,196 @@ msgstr ""
 msgid "Esc steps back: menu, edit mode, folder, search, then closes"
 msgstr ""
 
-#: src/lib/chrome.js:35
-msgid "Ctrl E"
-msgstr ""
-
-#: src/lib/chrome.js:46
-msgid "Preferences…"
-msgstr ""
-
-#: src/lib/chrome.js:87
-msgid "Editing layout"
-msgstr ""
-
-#: src/lib/chrome.js:92
-msgid "drag a folder to move it · drag the round corner handle to resize"
-msgstr ""
-
-#: src/lib/chrome.js:97
-msgid "Done"
-msgstr ""
-
-#: src/lib/chrome.js:117
-msgid "<b>Tip:</b> right-click or long-press a folder to resize and arrange"
-msgstr ""
-
-#: src/lib/chrome.js:119
-msgid "Got it"
-msgstr ""
-
-#. Translators: date under the clock, strftime format
-#: src/lib/clock.js:69
-msgid "%A, %-d %B"
-msgstr ""
-
-#: src/lib/folderView.js:189
-msgid "Sort by use"
-msgstr ""
-
-#: src/lib/folderView.js:199
-msgid "Close folder"
-msgstr ""
-
-#: src/lib/folderView.js:278 src/lib/layer.js:944 src/lib/tile.js:263
-#, javascript-format
-msgid "%d app"
-msgid_plural "%d apps"
-msgstr[0] ""
-msgstr[1] ""
-
-#: src/lib/layer.js:923
-#, javascript-format
-msgid "Nothing matches “%s”. Enter opens %s."
-msgstr ""
-
-#: src/lib/layer.js:925
-#, javascript-format
-msgid "Nothing matches “%s”. Enter searches %s."
-msgstr ""
-
-#: src/lib/layer.js:927
-#, javascript-format
-msgid "Nothing matches “%s”."
-msgstr ""
-
-#: src/lib/layer.js:946
-#, javascript-format
-msgid "%d other"
-msgid_plural "%d other"
-msgstr[0] ""
-msgstr[1] ""
-
-#: src/lib/layer.js:951
-#, javascript-format
-msgid "Switch to %s"
-msgstr ""
-
-#: src/lib/layer.js:952 src/lib/layer.js:954 src/lib/layer.js:957
-#: src/lib/tile.js:262
-#, javascript-format
-msgid "Open %s"
-msgstr ""
-
-#: src/lib/layer.js:958
-#, javascript-format
-msgid "Search %s"
-msgstr ""
-
-#: src/lib/model.js:29
-msgid "Games"
-msgstr ""
-
-#: src/lib/model.js:30
-msgid "Development"
-msgstr ""
-
-#: src/lib/model.js:31
-msgid "Graphics"
-msgstr ""
-
-#: src/lib/model.js:32
-msgid "Media"
-msgstr ""
-
-#: src/lib/model.js:33
-msgid "Internet"
-msgstr ""
-
-#: src/lib/model.js:34
-msgid "Office"
-msgstr ""
-
-#: src/lib/model.js:35
-msgid "Education"
-msgstr ""
-
-#: src/lib/model.js:36
-msgid "Settings"
-msgstr ""
-
-#: src/lib/model.js:37
-msgid "System"
-msgstr ""
-
-#: src/lib/model.js:38
-msgid "Utilities"
-msgstr ""
-
-#: src/lib/model.js:40
-msgid "Other"
-msgstr ""
-
-#: src/lib/model.js:322
-msgid "Unsorted"
-msgstr ""
-
-#: src/lib/results.js:201
-msgid "Apps"
-msgstr ""
-
-#: src/lib/results.js:203
-msgid "Settings and files"
-msgstr ""
-
-#: src/lib/results.js:344
-msgid "Pinned"
-msgstr ""
-
-#: src/lib/results.js:346
-#, javascript-format
-msgid "Running · %s"
-msgstr ""
-
-#: src/lib/results.js:346
-msgid "Running"
-msgstr ""
-
-#: src/lib/searchPill.js:31
-msgid "Type to search apps, settings and files"
-msgstr ""
-
-#: src/lib/searchPill.js:45
-msgid "Enter"
-msgstr ""
-
-#: src/lib/tile.js:66
+#: src/lib/appIcon.js:21
 #, javascript-format
 msgid "running, %d window"
 msgid_plural "running, %d windows"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/lib/tile.js:138
+#: src/lib/appIcon.js:106
 msgid "New"
 msgstr ""
 
-#: src/lib/tile.js:271
+#: src/lib/board.js:373
+#, javascript-format
+msgid "Page %d"
+msgstr ""
+
+#: src/lib/chrome.js:28
+msgid "Ctrl E"
+msgstr ""
+
+#: src/lib/chrome.js:39
+msgid "Preferences…"
+msgstr ""
+
+#: src/lib/chrome.js:79
+msgid "Editing layout"
+msgstr ""
+
+#: src/lib/chrome.js:84
+msgid "drag a folder to move it · drag the round corner handle to resize"
+msgstr ""
+
+#: src/lib/chrome.js:89
+msgid "Done"
+msgstr ""
+
+#: src/lib/chrome.js:109
+msgid "<b>Tip:</b> right-click or long-press a folder to resize and arrange"
+msgstr ""
+
+#: src/lib/chrome.js:111
+msgid "Got it"
+msgstr ""
+
+#. Translators: date under the clock, strftime format
+#: src/lib/clock.js:81
+msgid "%A, %-d %B"
+msgstr ""
+
+#: src/lib/folderView.js:188
+msgid "Sort by use"
+msgstr ""
+
+#: src/lib/folderView.js:198
+msgid "Close folder"
+msgstr ""
+
+#: src/lib/folderView.js:272 src/lib/searchMode.js:149 src/lib/tile.js:142
+#, javascript-format
+msgid "%d app"
+msgid_plural "%d apps"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/lib/model.js:30
+msgid "Games"
+msgstr ""
+
+#: src/lib/model.js:31
+msgid "Development"
+msgstr ""
+
+#: src/lib/model.js:32
+msgid "Graphics"
+msgstr ""
+
+#: src/lib/model.js:33
+msgid "Media"
+msgstr ""
+
+#: src/lib/model.js:34
+msgid "Internet"
+msgstr ""
+
+#: src/lib/model.js:35
+msgid "Office"
+msgstr ""
+
+#: src/lib/model.js:36
+msgid "Education"
+msgstr ""
+
+#: src/lib/model.js:37
+msgid "Settings"
+msgstr ""
+
+#: src/lib/model.js:38
+msgid "System"
+msgstr ""
+
+#: src/lib/model.js:39
+msgid "Utilities"
+msgstr ""
+
+#: src/lib/model.js:41
+msgid "Other"
+msgstr ""
+
+#: src/lib/model.js:325
+msgid "Unsorted"
+msgstr ""
+
+#: src/lib/results.js:192
+msgid "Apps"
+msgstr ""
+
+#: src/lib/results.js:194
+msgid "Settings and files"
+msgstr ""
+
+#: src/lib/results.js:314
+msgid "Pinned"
+msgstr ""
+
+#: src/lib/results.js:316
+#, javascript-format
+msgid "Running · %s"
+msgstr ""
+
+#: src/lib/results.js:316
+msgid "Running"
+msgstr ""
+
+#: src/lib/searchMode.js:127
+#, javascript-format
+msgid "Nothing matches “%s”. Enter opens %s."
+msgstr ""
+
+#: src/lib/searchMode.js:129
+#, javascript-format
+msgid "Nothing matches “%s”. Enter searches %s."
+msgstr ""
+
+#: src/lib/searchMode.js:131
+#, javascript-format
+msgid "Nothing matches “%s”."
+msgstr ""
+
+#: src/lib/searchMode.js:151
+#, javascript-format
+msgid "%d other"
+msgid_plural "%d other"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/lib/searchMode.js:158
+#, javascript-format
+msgid "Switch to %s"
+msgstr ""
+
+#: src/lib/searchMode.js:158 src/lib/searchMode.js:160
+#: src/lib/searchMode.js:163 src/lib/tile.js:141
+#, javascript-format
+msgid "Open %s"
+msgstr ""
+
+#: src/lib/searchMode.js:163
+#, javascript-format
+msgid "Search %s"
+msgstr ""
+
+#: src/lib/searchPill.js:30
+msgid "Type to search apps, settings and files"
+msgstr ""
+
+#: src/lib/searchPill.js:44
+msgid "Enter"
+msgstr ""
+
+#: src/lib/tile.js:150
 #, javascript-format
 msgid "%s, %d apps, %d more"
 msgstr ""
 
-#: src/lib/tile.js:272
+#: src/lib/tile.js:151
 #, javascript-format
 msgid "%s, %d apps"
 msgstr ""
 
-#: src/lib/tile.js:440
+#: src/lib/tile.js:303
 #, javascript-format
 msgid "%s folder, %d by %d"
 msgstr ""

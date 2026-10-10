@@ -60,7 +60,12 @@ export default class CubbyPreferences extends ExtensionPreferences {
                 color.rgba = rgba;
         };
         syncAccent();
-        settings.connect('changed::accent-override', syncAccent);
+        // the Extensions app outlives this window, so drop the handler with it
+        const accentId = settings.connect('changed::accent-override', syncAccent);
+        window.connect('close-request', () => {
+            settings.disconnect(accentId);
+            return false;
+        });
         accentRow.connect('notify::active', () => {
             const on = accentRow.active;
             const cur = settings.get_string('accent-override');

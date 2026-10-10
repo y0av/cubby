@@ -46,6 +46,8 @@ export class WallpaperWatcher extends Signals.EventEmitter {
         super();
         this._aspect = aspect;
         this.luminance = DEFAULT_LUMINANCE;
+        this.sample = null;
+        this._cancellable = null;
         this._bg = new Gio.Settings({schema_id: 'org.gnome.desktop.background'});
         this._iface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         const update = () => this._update();

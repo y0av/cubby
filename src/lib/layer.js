@@ -315,6 +315,10 @@ export const Layer = GObject.registerClass({
     closeFolder({instant = false} = {}) {
         if (this.mode !== Mode.FOLDER)
             return;
+        // the layer can close mid-drag (a window takes focus); end the drag
+        // here so its grab is released, not left for folderView.close()
+        if (this.folderView.dragging)
+            this._endFolderDrag(false);
         this.mode = Mode.BOARD;
         this._syncCoach();
         const tile = this._folderTile;
@@ -798,7 +802,7 @@ export const Layer = GObject.registerClass({
         }
         // a notification banner took keyboard focus (Super+N)
         // (MessageTray overrides contains() for notification sources)
-        if (focus && Main.messageTray && Clutter.Actor.prototype.contains.call(Main.messageTray, focus)) {
+        if (focus && Clutter.Actor.prototype.contains.call(Main.messageTray, focus)) {
             this.close({instant: true});
             return;
         }
@@ -1190,6 +1194,8 @@ export const Layer = GObject.registerClass({
     _onDestroy() {
         this._isOpen = false;
         this._cancelLongPress();
+        this._folderGrab?.dismiss();
+        this._folderGrab = null;
         this._edit.destroy();
         this._menu.destroy();
         this._appMenu?.destroy();
