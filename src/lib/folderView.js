@@ -331,6 +331,10 @@ class FolderView extends St.Widget {
         return this._drag !== null;
     }
 
+    get dragItem() {
+        return this._drag?.item ?? null;
+    }
+
     // x, y are the pointer's stage coordinates
     beginDrag(item, x, y) {
         const grid = this._grid;

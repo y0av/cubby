@@ -17,6 +17,7 @@ import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
 
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
+import {AppCarry} from './appCarry.js';
 import {Board} from './board.js';
 import {Coach, ContextMenu, EditBar} from './chrome.js';
 import {Clock, ClockHalo} from './clock.js';
@@ -44,6 +45,8 @@ const FOLDER_CROSSFADE_MS = 160;
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 8;
 const COACH_BOTTOM = 72;
+// how long a dragged app stays outside the folder before the folder closes
+const LIFT_OUT_MS = 350;
 
 const Mode = {BOARD: 'board', SEARCH: 'search', FOLDER: 'folder', EDIT: 'edit'};
 
@@ -113,6 +116,7 @@ export const Layer = GObject.registerClass({
         this._folderTile = null;
         this._folderPress = null;
         this._folderGrab = null;
+        this._liftOutId = 0;
         this._dimmer = new WindowDimmer();
         this.mode = Mode.BOARD;
         this._selected = null;
@@ -162,6 +166,7 @@ export const Layer = GObject.registerClass({
         this.add_child(this.tooltip);
 
         this._edit = new EditMode(this.board, theme);
+        this._carry = new AppCarry(this, this.board);
         this._appMenuManager = new PopupMenu.PopupMenuManager(this);
         this._appMenu = null;
         this._menu = new ContextMenu(this, {
@@ -542,6 +547,8 @@ export const Layer = GObject.registerClass({
         this._isOpen = false;
         global.stage.disconnectObject(this._outsideWatch);
         this._cancelLongPress();
+        if (this._carry.active)
+            this._endCarry(false);
         if (this._menu.isOpen)
             this._menu.close();
         if (this.mode === Mode.EDIT)
@@ -927,12 +934,17 @@ export const Layer = GObject.registerClass({
 
     _onMotion(event) {
         const [x, y] = event.get_coords();
+        if (this._carry.active) {
+            this._carry.motion(x, y);
+            return Clutter.EVENT_STOP;
+        }
         if (this._edit.dragging) {
             this._edit.motion(x, y);
             return Clutter.EVENT_STOP;
         }
         if (this.folderView.dragging) {
             this.folderView.dragMotion(x, y);
+            this._watchLiftOut(x, y);
             return Clutter.EVENT_STOP;
         }
         if (this._startFolderDrag(x, y))
@@ -951,6 +963,10 @@ export const Layer = GObject.registerClass({
     _onButtonRelease() {
         this._cancelLongPress();
         this._folderPress = null;
+        if (this._carry.active) {
+            this._endCarry(true);
+            return Clutter.EVENT_STOP;
+        }
         if (this._edit.dragging) {
             this._edit.endDrag(true);
             return Clutter.EVENT_STOP;
@@ -978,9 +994,54 @@ export const Layer = GObject.registerClass({
     }
 
     _endFolderDrag(commit) {
+        this._cancelLiftOut();
         this._folderGrab?.dismiss();
         this._folderGrab = null;
         this._saveFolderOrder(this.folderView.endDrag(commit));
+    }
+
+    // an app held outside the folder for a moment closes it, to be dropped
+    // on another folder's tile
+    _watchLiftOut(x, y) {
+        const r = extents(this.folderView.panel);
+        const inside = x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height;
+        if (inside) {
+            this._cancelLiftOut();
+            return;
+        }
+        if (this._liftOutId)
+            return;
+        this._liftOutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LIFT_OUT_MS, () => {
+            this._liftOutId = 0;
+            this._liftOut();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _cancelLiftOut() {
+        if (this._liftOutId)
+            GLib.source_remove(this._liftOutId);
+        this._liftOutId = 0;
+    }
+
+    _liftOut() {
+        const item = this.folderView.dragItem;
+        const sourceId = this.folderView.folder?.id;
+        if (!item || !sourceId)
+            return;
+        // the grab stays for the carry; the folder's order is left as it was
+        this.folderView.endDrag(false);
+        this.closeFolder();
+        const [x, y] = global.get_pointer();
+        this._carry.begin(item.app, sourceId, x, y);
+    }
+
+    _endCarry(commit) {
+        this._folderGrab?.dismiss();
+        this._folderGrab = null;
+        const drop = this._carry.end(commit);
+        if (drop)
+            this._model.moveApp(drop.appId, drop.folderId);
     }
 
     _onButtonPress(event) {
@@ -1148,6 +1209,10 @@ export const Layer = GObject.registerClass({
     // Esc backs out one level: a drag, edit mode, the folder, the search, and
     // finally the layer. Menus handle their own Esc.
     _stepBack() {
+        if (this._carry.active) {
+            this._endCarry(false);
+            return;
+        }
         if (this.folderView.dragging) {
             this._endFolderDrag(false);
             return;
@@ -1194,6 +1259,8 @@ export const Layer = GObject.registerClass({
     _onDestroy() {
         this._isOpen = false;
         this._cancelLongPress();
+        this._cancelLiftOut();
+        this._carry.destroy();
         this._folderGrab?.dismiss();
         this._folderGrab = null;
         this._edit.destroy();

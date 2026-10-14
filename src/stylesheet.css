@@ -415,3 +415,6 @@
 .cubby-light .cubby-clock-date { background-color: rgba(246, 246, 249, 0.90); border-color: rgba(255, 255, 255, 0.75); color: #1e1e2e; }
 .cubby-light .cubby-dot { background-color: rgba(30, 30, 46, 0.30); }
 .cubby-light .cubby-dot:checked { background-color: #1e1e2e; }
+
+/* a folder tile an app is about to be dropped on, over either glass */
+.cubby-tile.cubby-tile-drop { border-color: rgba(255, 255, 255, 0.95); box-shadow: 0 24px 56px rgba(0, 0, 0, 0.42); }

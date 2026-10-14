@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 y0av
 
-// The user's app folders, which are only ever read, plus "Unsorted" for the
-// rest, or category groups for people who never made folders.
+// The user's app folders, plus "Unsorted" for the rest, or category groups
+// for people who never made folders. Folders are only written when an app is
+// dragged from one to another.
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -172,6 +173,45 @@ export class AppModel extends Signals.EventEmitter {
             this._writingOrders = false;
         }
         this.refreshUsage();
+    }
+
+    // Takes the app out of every GNOME folder but the target, as the stock
+    // grid does when an app is dragged between folders
+    moveApp(appId, toId) {
+        const from = this.groupOf(appId);
+        const app = this._appSys.lookup_app(appId);
+        if (!from || !app || from.id === toId || !this.folder(toId))
+            return false;
+        const cats = categoriesOf(app.app_info);
+        for (const id of this._folderSettings.get_strv('folder-children')) {
+            if (id !== toId)
+                this._removeFromFolder(this._folderChild(id), appId, cats);
+        }
+        if (toId.startsWith(VIRTUAL_PREFIX)) {
+            const assign = readJson(this._settings, 'virtual-groups').assign ?? {};
+            assign[appId] = toId.slice(VIRTUAL_PREFIX.length);
+            this._settings.set_string('virtual-groups', JSON.stringify({version: 1, assign}));
+        } else if (toId !== UNSORTED_ID) {
+            const s = this._folderChild(toId);
+            const apps = s.get_strv('apps');
+            if (!apps.includes(appId))
+                s.set_strv('apps', [...apps, appId]);
+            const excluded = s.get_strv('excluded-apps');
+            if (excluded.includes(appId))
+                s.set_strv('excluded-apps', excluded.filter(id => id !== appId));
+        }
+        this._reload();
+        return true;
+    }
+
+    // an app that joined through the folder's categories has to be excluded
+    _removeFromFolder(s, appId, cats) {
+        const apps = s.get_strv('apps');
+        if (apps.includes(appId))
+            s.set_strv('apps', apps.filter(id => id !== appId));
+        const excluded = s.get_strv('excluded-apps');
+        if (s.get_strv('categories').some(c => cats.includes(c)) && !excluded.includes(appId))
+            s.set_strv('excluded-apps', [...excluded, appId]);
     }
 
     _orders() {
